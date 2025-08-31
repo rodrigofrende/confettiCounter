@@ -1,0 +1,101 @@
+import React from 'react';
+import type { Transaction } from '../types';
+
+interface StatisticsProps {
+  transactions: Transaction[];
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+}
+
+export const Statistics: React.FC<StatisticsProps> = ({ 
+  transactions, 
+  totalIncome, 
+  totalExpenses, 
+  balance 
+}) => {
+  const transactionCount = transactions.length;
+  const averageTransaction = transactionCount > 0 ? balance / transactionCount : 0;
+
+  return (
+    <div className="card mb-6 animate-slide-in">
+      <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3">
+        <span className="text-2xl">📊</span>
+        Estadísticas Financieras
+      </h3>
+      
+      <div className="stats-grid grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="stat-card stat-card-income group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/60 rounded-2xl">
+              <div className="text-3xl text-emerald-600 group-hover:scale-110 transition-transform duration-300">💰</div>
+            </div>
+            <div className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full font-semibold">
+              +{((totalIncome / (totalIncome + totalExpenses)) * 100 || 0).toFixed(0)}%
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-emerald-700 mb-1">
+            ${totalIncome.toFixed(2)}
+          </div>
+          <div className="text-sm text-emerald-600 font-medium">Total Ingresos</div>
+        </div>
+        
+        <div className="stat-card stat-card-expense group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/60 rounded-2xl">
+              <div className="text-3xl text-red-600 group-hover:scale-110 transition-transform duration-300">💸</div>
+            </div>
+            <div className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full font-semibold">
+              -{((totalExpenses / (totalIncome + totalExpenses)) * 100 || 0).toFixed(0)}%
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-red-700 mb-1">
+            ${totalExpenses.toFixed(2)}
+          </div>
+          <div className="text-sm text-red-600 font-medium">Total Gastos</div>
+        </div>
+        
+        <div className="stat-card stat-card-balance group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/60 rounded-2xl">
+              <div className="text-3xl text-blue-600 group-hover:scale-110 transition-transform duration-300">📈</div>
+            </div>
+            <div className={`text-xs px-2 py-1 rounded-full font-semibold ${
+              balance >= 0 ? 'text-blue-600 bg-blue-100' : 'text-red-600 bg-red-100'
+            }`}>
+              {balance >= 0 ? 'Positivo' : 'Negativo'}
+            </div>
+          </div>
+          <div className={`text-2xl font-bold mb-1 ${balance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+            ${balance.toFixed(2)}
+          </div>
+          <div className="text-sm text-blue-600 font-medium">Balance Neto</div>
+        </div>
+        
+        <div className="stat-card stat-card-info group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/60 rounded-2xl">
+              <div className="text-3xl text-gray-600 group-hover:scale-110 transition-transform duration-300">📝</div>
+            </div>
+            <div className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full font-semibold">
+              Total
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-gray-700 mb-1">
+            {transactionCount}
+          </div>
+          <div className="text-sm text-gray-600 font-medium">Transacciones</div>
+        </div>
+      </div>
+      
+      {transactionCount > 0 && (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center">
+          <div className="text-sm text-gray-600 mb-1">Promedio por Transacción</div>
+          <div className={`text-lg font-bold ${averageTransaction >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ${averageTransaction.toFixed(2)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
