@@ -1,138 +1,262 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Goal } from '../types';
+import { GoalForm } from './GoalForm';
+import { AddMoneyModal } from './AddMoneyModal';
+import Confetti from 'react-confetti';
 
 interface GoalProgressProps {
   goals: Goal[];
   onUpdateGoal: (id: string, updates: Partial<Goal>) => void;
   onDeleteGoal: (id: string) => void;
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
+  onAddTransaction?: (amount: number, description: string, type: 'income' | 'expense') => void;
 }
 
 export const GoalProgress: React.FC<GoalProgressProps> = ({ 
   goals, 
   onUpdateGoal, 
   onDeleteGoal,
-  onAddGoal 
+  onAddGoal,
+  onAddTransaction
 }) => {
   const [showNewGoalForm, setShowNewGoalForm] = useState(false);
-  const [name, setName] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
-  const [deadline, setDeadline] = useState('');
-  const [color, setColor] = useState('#3B82F6');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationGoal, setCelebrationGoal] = useState<Goal | null>(null);
+  const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const numTarget = parseFloat(targetAmount);
-    if (isNaN(numTarget) || numTarget <= 0 || !name.trim() || !deadline) return;
-    
-    const newGoal: Omit<Goal, 'id'> = {
-      name: name.trim(),
-      targetAmount: numTarget,
-      currentAmount: 0,
-      deadline: new Date(deadline),
-      color
+  // Update window dimensions for confetti
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
     };
-    
-    onAddGoal(newGoal);
-    setName('');
-    setTargetAmount('');
-    setDeadline('');
-    setColor('#3B82F6');
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleGoalAdded = (goal: Omit<Goal, 'id'>) => {
+    onAddGoal(goal);
     setShowNewGoalForm(false);
   };
 
+  const handleUpdateGoal = (id: string, updates: Partial<Goal>) => {
+    const goal = goals.find(g => g.id === id);
+    if (goal && updates.currentAmount) {
+      const wasGoalReached = goal.currentAmount >= goal.targetAmount;
+      const willGoalBeReached = updates.currentAmount >= goal.targetAmount;
+      
+      // Trigger celebration if goal is reached for the first time
+      if (!wasGoalReached && willGoalBeReached) {
+        const updatedGoal = { ...goal, currentAmount: updates.currentAmount };
+        setCelebrationGoal(updatedGoal);
+        setShowCelebration(true);
+      }
+    }
+    
+    onUpdateGoal(id, updates);
+  };
+
+  const closeCelebration = () => {
+    setShowCelebration(false);
+    setCelebrationGoal(null);
+  };
+
+  const handleAddMoneyClick = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setShowAddMoneyModal(true);
+  };
+
+  const handleAddMoney = (amount: number, description: string, isAddition: boolean) => {
+    if (!selectedGoal) return;
+    
+    // Calculate new amount based on addition or subtraction
+    const finalAmount = isAddition ? amount : -amount;
+    const newAmount = selectedGoal.currentAmount + finalAmount;
+    
+    // Update goal current amount
+    handleUpdateGoal(selectedGoal.id, { currentAmount: newAmount });
+    
+    // Add transaction if callback is provided
+    if (onAddTransaction) {
+      const transactionType = isAddition ? 'income' : 'expense';
+      const actionText = isAddition ? 'Agregado a' : 'Quitado de';
+      onAddTransaction(amount, `${description} (${actionText} objetivo: ${selectedGoal.name})`, transactionType);
+    }
+    
+    // Close modal and reset selected goal
+    setShowAddMoneyModal(false);
+    setSelectedGoal(null);
+  };
+
+  const closeAddMoneyModal = () => {
+    setShowAddMoneyModal(false);
+    setSelectedGoal(null);
+  };
+
+  const handleDeleteClick = (goal: Goal) => {
+    setGoalToDelete(goal);
+    setShowDeleteConfirmation(true);
+  };
+
+  const confirmDeleteGoal = () => {
+    if (goalToDelete) {
+      onDeleteGoal(goalToDelete.id);
+      setShowDeleteConfirmation(false);
+      setGoalToDelete(null);
+    }
+  };
+
+  const cancelDeleteGoal = () => {
+    setShowDeleteConfirmation(false);
+    setGoalToDelete(null);
+  };
+
+  // Calculate useful stats for the indicators
+  const totalGoals = goals.length;
+  const completedGoals = goals.filter(goal => goal.currentAmount >= goal.targetAmount).length;
+  const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+  const overallProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+  const urgentGoals = goals.filter(goal => {
+    const today = new Date();
+    const deadline = new Date(goal.deadline);
+    today.setHours(0, 0, 0, 0);
+    deadline.setHours(0, 0, 0, 0);
+    const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysLeft >= 0 && daysLeft <= 7 && goal.currentAmount < goal.targetAmount;
+  }).length;
+
   return (
-    <div className="space-y-6">
-      {/* Header with Add Goal Button */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">
-            🎯 Mis Objetivos Financieros
-          </h2>
+    <div className="space-y-3">
+      {/* Professional Header with Indicators and New Button */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          {/* Left Section - Stats Indicators */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900">🎯 Mis Objetivos</h2>
+              <span className="bg-blue-100 text-blue-800 text-sm font-semibold px-2.5 py-1 rounded-full">
+                {totalGoals}
+              </span>
+            </div>
+            
+            {/* Professional Stats Pills */}
+            {totalGoals > 0 && (
+              <div className="hidden sm:flex items-center space-x-3">
+                <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-semibold text-green-700">{completedGoals} completados</span>
+                </div>
+                
+                {urgentGoals > 0 && (
+                  <div className="flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-lg">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-semibold text-orange-700">{urgentGoals} urgentes</span>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm font-semibold text-blue-700">{overallProgress.toFixed(0)}% progreso</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Center Section - Progress Summary (Desktop only) */}
+          {totalGoals > 0 && (
+            <div className="hidden lg:block flex-1 max-w-xs mx-8">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex justify-between text-xs text-gray-600 mb-2">
+                  <span className="font-medium">Progreso General</span>
+                  <span className="font-bold">{overallProgress.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                  <div 
+                    className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 shadow-sm"
+                    style={{ width: `${Math.min(overallProgress, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Ahorrado:</span>
+                  <span className="font-semibold text-gray-700">${totalSaved.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Meta total:</span>
+                  <span className="font-semibold text-gray-700">${totalTarget.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Right Section - New Goal Button */}
           <button
             onClick={() => setShowNewGoalForm(!showNewGoalForm)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+            className="group relative bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2.5 px-4 sm:py-3 sm:px-5 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
           >
-            {showNewGoalForm ? 'Cancelar' : '+ Nuevo Objetivo'}
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">{showNewGoalForm ? '✖️' : '➕'}</span>
+              <span className="font-bold">{showNewGoalForm ? 'Cancelar' : 'Nuevo Objetivo'}</span>
+            </div>
           </button>
         </div>
 
+        {/* Mobile Stats Row */}
+        {totalGoals > 0 && (
+          <div className="block sm:hidden mt-4">
+            <div className={`grid gap-2 ${urgentGoals > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <div className="bg-green-50 rounded-lg p-2 text-center">
+                <div className="text-base font-bold text-green-600">{completedGoals}</div>
+                <div className="text-xs text-green-700">Completados</div>
+              </div>
+              {urgentGoals > 0 && (
+                <div className="bg-orange-50 rounded-lg p-2 text-center">
+                  <div className="text-base font-bold text-orange-600">{urgentGoals}</div>
+                  <div className="text-xs text-orange-700">Urgentes</div>
+                </div>
+              )}
+              <div className="bg-blue-50 rounded-lg p-2 text-center">
+                <div className="text-base font-bold text-blue-600">{overallProgress.toFixed(0)}%</div>
+                <div className="text-xs text-blue-700">Progreso</div>
+              </div>
+            </div>
+            
+            {/* Mobile Progress Bar */}
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>Progreso Total</span>
+                <span>${totalSaved.toLocaleString()} / ${totalTarget.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(overallProgress, 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* New Goal Form */}
         {showNewGoalForm && (
-          <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre del Objetivo
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Vacaciones, Auto, Casa..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta de Ahorro
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={targetAmount}
-                  onChange={(e) => setTargetAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha Límite
-                </label>
-                <input
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Color del Objetivo
-              </label>
-              <div className="flex space-x-2">
-                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((colorOption) => (
-                  <button
-                    key={colorOption}
-                    type="button"
-                    onClick={() => setColor(colorOption)}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      color === colorOption ? 'border-gray-800' : 'border-gray-300'
-                    }`}
-                    style={{ backgroundColor: colorOption }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex-1"
-              >
-                Crear Objetivo
-              </button>
-            </div>
-          </form>
+          <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+            <GoalForm 
+              onAddGoal={handleGoalAdded}
+              onCancel={() => setShowNewGoalForm(false)}
+              buttonText="Crear Objetivo"
+              showCancelButton={true}
+            />
+          </div>
         )}
       </div>
 
@@ -150,88 +274,274 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {goals.map((goal) => {
           const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
           const remaining = goal.targetAmount - goal.currentAmount;
           const isGoalReached = goal.currentAmount >= goal.targetAmount;
-          const daysLeft = Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Calculate days more precisely - don't show as expired if it's today
+          const today = new Date();
+          const deadline = new Date(goal.deadline);
+          today.setHours(0, 0, 0, 0);
+          deadline.setHours(0, 0, 0, 0);
+          const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const isExpired = daysLeft < 0;
+          const isToday = daysLeft === 0;
+          const isUrgent = daysLeft > 0 && daysLeft <= 7;
 
                       return (
-              <div key={goal.id} className="bg-white rounded-xl p-6 shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300" style={{borderLeft: `4px solid ${goal.color}`}}>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-                    <span className="text-2xl">🎯</span>
-                    {goal.name}
-                  </h4>
-                  <div className="flex space-x-2">
+              <div key={goal.id} className="group bg-white rounded-xl p-3 sm:p-4 shadow-md border border-gray-100 hover:shadow-lg transition-all duration-300" style={{borderLeft: `4px solid ${goal.color}`, background: `linear-gradient(135deg, #ffffff 0%, ${goal.color}06 100%)`}}>
+                {/* Header - Unified responsive layout */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base" style={{backgroundColor: `${goal.color}20`, color: goal.color}}>
+                      🎯
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-gray-900 text-base sm:text-lg leading-tight truncate">
+                        {goal.name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs sm:text-sm text-gray-500">Meta: ${goal.targetAmount.toLocaleString()}</span>
+                        {isGoalReached && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ✓ Completado
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-1.5 ml-2">
                     <button
-                      onClick={() => onUpdateGoal(goal.id, { 
-                        currentAmount: Math.min(goal.currentAmount + 100, goal.targetAmount) 
-                      })}
-                      className="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      onClick={() => handleAddMoneyClick(goal)}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50"
                       disabled={isGoalReached}
+                      title="Gestionar dinero"
                     >
-                      +$100
+                      <span className="text-sm sm:text-base">💰</span>
+                      <span className="hidden sm:inline ml-1 text-xs font-semibold">Agregar</span>
                     </button>
                     <button
-                      onClick={() => onDeleteGoal(goal.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      onClick={() => handleDeleteClick(goal)}
+                      className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
+                      title="Eliminar objetivo"
                     >
-                      🗑️
+                      <span className="text-sm sm:text-base">🗑️</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="text-center mb-3">
-                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                <div className="text-center mb-4">
+                  <div className="text-xl sm:text-2xl font-bold mb-1" style={{color: goal.color}}>
                     ${goal.currentAmount.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs sm:text-sm text-gray-500">
                     de ${goal.targetAmount.toLocaleString()}
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs sm:text-sm font-medium text-gray-700 mb-2">
                     <span>Progreso</span>
-                    <span>{progress.toFixed(1)}%</span>
+                    <span className="font-bold">{progress.toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden">
                     <div 
-                      className={`h-full transition-all duration-1000 ease-out ${
+                      className={`h-full transition-all duration-1000 ease-out rounded-full ${
                         isGoalReached 
                           ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                          : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                          : 'bg-gradient-to-r'
                       }`}
-                      style={{ width: `${progress}%` }}
+                      style={{ 
+                        width: `${progress}%`,
+                        background: isGoalReached 
+                          ? 'linear-gradient(90deg, #10b981, #059669)'
+                          : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`
+                      }}
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Fecha límite: {goal.deadline.toLocaleDateString('es-ES')}</span>
+                {/* Info Section - Unified responsive layout */}
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">📅</span>
+                    <span className="font-medium text-gray-700">{goal.deadline.toLocaleDateString('es-ES')}</span>
+                  </div>
                   {!isGoalReached && (
-                    <span className={daysLeft < 7 ? 'text-red-600 font-semibold' : ''}>
-                      {daysLeft > 0 ? `${daysLeft} días restantes` : '¡Vencido!'}
+                    <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
+                      isExpired 
+                        ? 'bg-red-100 text-red-700' 
+                        : isToday 
+                        ? 'bg-orange-100 text-orange-700'
+                        : isUrgent 
+                        ? 'bg-yellow-100 text-yellow-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {isExpired 
+                        ? '❌ Vencido' 
+                        : isToday 
+                        ? '🔥 Hoy'
+                        : isUrgent 
+                        ? `⚠️ ${daysLeft}d`
+                        : `✅ ${daysLeft}d`
+                      }
                     </span>
                   )}
                 </div>
 
                 {!isGoalReached && remaining > 0 && (
-                  <div className="text-center text-gray-600 mt-2">
-                    Te faltan <span className="font-semibold text-blue-600">${remaining.toLocaleString()}</span> para alcanzar tu objetivo
+                  <div className="mt-3 p-2.5 rounded-lg" style={{backgroundColor: `${goal.color}10`}}>
+                    <div className="text-center text-xs sm:text-sm text-gray-700">
+                      Te faltan <span className="font-bold" style={{color: goal.color}}>${remaining.toLocaleString()}</span> para alcanzar tu objetivo
+                    </div>
                   </div>
                 )}
 
                 {isGoalReached && (
-                  <div className="text-center text-green-600 font-bold text-lg mt-3 p-3 bg-green-50 rounded-xl">
-                    🎉 ¡Objetivo alcanzado! 🎊
+                  <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <div className="text-center">
+                      <div className="text-lg mb-1">🎉</div>
+                      <div className="text-green-700 font-bold text-sm sm:text-base">
+                        ¡Objetivo alcanzado!
+                      </div>
+                      <div className="text-green-600 text-xs mt-0.5">
+                        ¡Felicitaciones por tu logro! 🎊
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+      )}
+      
+      {/* Celebration Modal with Confetti */}
+      {showCelebration && celebrationGoal && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+            {/* Modal */}
+            <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
+              <div className="mb-6">
+                <div className="text-6xl mb-4">🎉</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  ¡Felicitaciones!
+                </h2>
+                <p className="text-lg text-gray-700 mb-4">
+                  Has alcanzado tu objetivo:
+                </p>
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-xl font-bold text-green-800 mb-2">
+                    🎯 {celebrationGoal.name}
+                  </h3>
+                  <div className="text-3xl font-bold text-green-600">
+                    ${celebrationGoal.targetAmount.toLocaleString()}
+                  </div>
+                  <p className="text-green-700 text-sm mt-1">
+                    ¡Meta completada!
+                  </p>
+                </div>
+                <p className="text-gray-600 text-sm">
+                  ¡Sigue así y alcanza todos tus sueños financieros! 💪
+                </p>
+              </div>
+              
+              <button
+                onClick={closeCelebration}
+                className="group relative w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-lg">🚀</span>
+                  <span>¡Continuar!</span>
+                </div>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 rounded-xl transition-opacity duration-300"></div>
+              </button>
+            </div>
+          </div>
+          
+          {/* Confetti Animation - Higher z-index */}
+          <div className="fixed inset-0 pointer-events-none z-[9999]">
+            <Confetti
+              width={windowDimensions.width}
+              height={windowDimensions.height}
+              recycle={false}
+              numberOfPieces={300}
+              gravity={0.05}
+              initialVelocityY={-15}
+              colors={['#10B981', '#059669', '#34D399', '#6EE7B7', '#A7F3D0']}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Add Money Modal */}
+      <AddMoneyModal
+        isOpen={showAddMoneyModal}
+        onClose={closeAddMoneyModal}
+        onAddMoney={handleAddMoney}
+        goalName={selectedGoal?.name || ''}
+        currentAmount={selectedGoal?.currentAmount || 0}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && goalToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
+            <div className="mb-6">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                ¿Estás seguro?
+              </h2>
+              <p className="text-lg text-gray-700 mb-4">
+                Estás a punto de eliminar el objetivo:
+              </p>
+              <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{backgroundColor: `${goalToDelete.color}20`, color: goalToDelete.color}}>
+                    🎯
+                  </div>
+                  <h3 className="text-xl font-bold text-red-800">
+                    {goalToDelete.name}
+                  </h3>
+                </div>
+                <div className="text-red-700 text-sm">
+                  Progreso actual: ${goalToDelete.currentAmount.toLocaleString()} de ${goalToDelete.targetAmount.toLocaleString()}
+                </div>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+                <p className="text-yellow-800 text-sm font-medium">
+                  ⚠️ Esta acción no se puede deshacer. Se perderá todo el progreso registrado.
+                </p>
+              </div>
+              <p className="text-gray-600 text-sm">
+                ¿Realmente quieres continuar?
+              </p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelDeleteGoal}
+                className="flex-1 group relative bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-lg">❌</span>
+                  <span>Cancelar</span>
+                </div>
+              </button>
+              <button
+                onClick={confirmDeleteGoal}
+                className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-lg">🗑️</span>
+                  <span>Sí, eliminar</span>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

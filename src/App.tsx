@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { Transaction, Goal } from './types';
-import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
 import { Statistics } from './components/Statistics';
 import { GoalProgress } from './components/GoalProgress';
@@ -114,31 +113,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                💰 Money Counter
-              </h1>
-              <p className="text-sm text-gray-600">
-                Balance: <span className={`font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ${balance.toFixed(2)}
-                </span>
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Objetivos activos</div>
-              <div className="text-lg font-bold text-blue-600">{goals.length}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
-      <div className="py-6 sm:py-8">
-        <Tabs
+      <div className="py-4 sm:py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Tabs
           defaultTab="objetivos"
           tabs={[
             {
@@ -152,14 +130,16 @@ function App() {
                     onUpdateGoal={updateGoal}
                     onDeleteGoal={deleteGoal}
                     onAddGoal={addGoal}
+                    onAddTransaction={addTransaction}
                   />
                 </div>
               ),
             },
+
             {
-              id: 'transacciones',
-              label: 'Transacciones',
-              icon: '💳',
+              id: 'historial',
+              label: 'Historial',
+              icon: '📋',
               content: (
                 <div className="space-y-6">
                   {/* Quick Stats */}
@@ -178,49 +158,16 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Transaction Form */}
+                  {/* Transaction History */}
                   <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
-                      Nueva Transacción
+                    <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
+                      Historial de Transacciones
                     </h2>
-                    <TransactionForm onAddTransaction={addTransaction} />
+                    <TransactionList 
+                      transactions={transactions}
+                      onDeleteTransaction={deleteTransaction}
+                    />
                   </div>
-
-                  {/* Recent Transactions */}
-                  {transactions.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                      <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
-                        Transacciones Recientes
-                      </h2>
-                      <TransactionList 
-                        transactions={transactions.slice(0, 5)}
-                        onDeleteTransaction={deleteTransaction}
-                      />
-                      {transactions.length > 5 && (
-                        <div className="text-center mt-4">
-                          <div className="text-blue-600 font-medium">
-                          Ver todas las transacciones en la pestaña Historial →
-                        </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ),
-            },
-            {
-              id: 'historial',
-              label: 'Historial',
-              icon: '📋',
-              content: (
-                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
-                    Historial Completo
-                  </h2>
-                  <TransactionList 
-                    transactions={transactions}
-                    onDeleteTransaction={deleteTransaction}
-                  />
                 </div>
               ),
             },
@@ -253,7 +200,8 @@ function App() {
               ),
             },
           ]}
-        />
+          />
+        </div>
       </div>
     </div>
   );

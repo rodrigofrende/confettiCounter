@@ -14,6 +14,35 @@
   animation: fade-in 0.4s ease-out forwards;
 }
 
+/* Modal animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-modalIn {
+  animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* Input field styles */
 .input-field {
   @apply w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 bg-white text-gray-900 font-medium;
@@ -22,4 +51,104 @@
 /* Card styles */
 .card {
   @apply bg-white rounded-2xl shadow-lg p-6 border border-gray-200 transition-all duration-300 hover:shadow-xl;
+}
+
+/* Calendar input styles */
+input[type="date"] {
+  @apply relative font-medium text-gray-900;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  background: transparent;
+}
+
+/* Style the native calendar picker */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background: none;
+  color: transparent;
+  cursor: pointer;
+  height: 100%;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 32px;
+  opacity: 0;
+}
+
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-day-field {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field {
+  padding: 0;
+}
+
+/* Firefox date input styling */
+input[type="date"]::-moz-focus-inner {
+  border: 0;
+}
+
+/* Date input hover and focus states */
+input[type="date"]:hover {
+  @apply border-blue-400 bg-blue-50;
+}
+
+input[type="date"]:focus {
+  @apply border-blue-500 ring-2 ring-blue-200 bg-white;
+}
+
+/* Custom date input wrapper for better control */
+.date-input-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.date-input-wrapper::after {
+  content: "📅";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 16px;
+  color: #6B7280;
+  transition: color 0.3s ease;
+  z-index: 2;
+}
+
+.date-input-wrapper:hover::after {
+  color: #3B82F6;
+}
+
+.date-input-wrapper input[type="date"] {
+  background-image: none;
+  position: relative;
+  z-index: 1;
+}
+
+.date-input-wrapper input[type="date"]:focus ~ ::after,
+.date-input-wrapper:focus-within::after {
+  color: #3B82F6;
 }
