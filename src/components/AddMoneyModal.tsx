@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MoneyInput } from './MoneyInput';
 
 interface AddMoneyModalProps {
   isOpen: boolean;
@@ -143,28 +144,20 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
                 Cantidad
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 text-lg font-medium">$</span>
-                </div>
-                <input
-                  type="number"
-                  id="amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  min="0"
-                  max={!isAddition ? currentAmount : undefined}
-                  step="0.01"
-                  className={`w-full pl-8 pr-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent text-lg font-medium ${
-                    isAddition 
-                      ? 'border-gray-300 focus:ring-green-500' 
-                      : 'border-gray-300 focus:ring-red-500'
-                  }`}
-                  required
-                  autoComplete="off"
-                />
-              </div>
+              <MoneyInput
+                id="amount"
+                value={amount}
+                onChange={setAmount}
+                placeholder="0.00"
+                min={0.01}
+                max={!isAddition ? currentAmount : undefined}
+                className={isAddition 
+                  ? 'border-gray-300 focus:ring-green-500' 
+                  : 'border-gray-300 focus:ring-red-500'
+                }
+                required
+                autoComplete="off"
+              />
               {/* Espacio reservado para evitar layout shift */}
               <div className="h-4 mt-1">
                 {!isAddition && (

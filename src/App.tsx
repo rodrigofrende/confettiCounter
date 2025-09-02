@@ -24,10 +24,14 @@ function App() {
     }
     
     if (savedGoals) {
-      setGoals(JSON.parse(savedGoals).map((g: any) => ({
+      const parsedGoals = JSON.parse(savedGoals).map((g: any) => ({
         ...g,
-        deadline: new Date(g.deadline)
-      })));
+        deadline: new Date(g.deadline),
+        order: g.order !== undefined ? g.order : 0
+      }));
+      // Ordenar por el campo order
+      parsedGoals.sort((a: Goal, b: Goal) => a.order - b.order);
+      setGoals(parsedGoals);
     }
   }, []);
 
@@ -52,16 +56,17 @@ function App() {
     setTransactions(prev => [newTransaction, ...prev]);
   };
 
-  const deleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id' | 'date'>>) => {
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
   const addGoal = (goal: Omit<Goal, 'id'>) => {
     const newGoal: Goal = {
       ...goal,
-      id: Date.now().toString()
+      id: Date.now().toString(),
+      order: goals.length
     };
-    setGoals(prev => [...prev, newGoal]);
+    setGoals(prev => [newGoal, ...prev]);
   };
 
   const updateGoal = (id: string, updates: Partial<Goal>) => {
@@ -70,6 +75,20 @@ function App() {
 
   const deleteGoal = (id: string) => {
     setGoals(prev => prev.filter(g => g.id !== id));
+  };
+
+  const reorderGoals = (startIndex: number, endIndex: number) => {
+    setGoals(prev => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(startIndex, 1);
+      result.splice(endIndex, 0, removed);
+      
+      // Actualizar los índices de orden
+      return result.map((goal, index) => ({
+        ...goal,
+        order: index
+      }));
+    });
   };
 
   const resetAll = () => {
@@ -131,6 +150,7 @@ function App() {
                     onDeleteGoal={deleteGoal}
                     onAddGoal={addGoal}
                     onAddTransaction={addTransaction}
+                    onReorderGoals={reorderGoals}
                   />
                 </div>
               ),
@@ -165,7 +185,7 @@ function App() {
                     </h2>
                     <TransactionList 
                       transactions={transactions}
-                      onDeleteTransaction={deleteTransaction}
+                      onUpdateTransaction={updateTransaction}
                     />
                   </div>
                 </div>

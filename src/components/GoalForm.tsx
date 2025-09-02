@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Goal } from '../types';
+import { MoneyInput } from './MoneyInput';
 
 interface GoalFormProps {
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
@@ -107,14 +108,12 @@ export const GoalForm: React.FC<GoalFormProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Meta de Ahorro
           </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
+          <MoneyInput
             value={targetAmount}
-            onChange={(e) => setTargetAmount(e.target.value)}
+            onChange={setTargetAmount}
             placeholder="0.00"
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+            className=""
+            min={0.01}
             required
           />
         </div>

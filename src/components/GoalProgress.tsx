@@ -3,6 +3,24 @@ import type { Goal } from '../types';
 import { GoalForm } from './GoalForm';
 import { AddMoneyModal } from './AddMoneyModal';
 import Confetti from 'react-confetti';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface GoalProgressProps {
   goals: Goal[];
@@ -10,6 +28,7 @@ interface GoalProgressProps {
   onDeleteGoal: (id: string) => void;
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
   onAddTransaction?: (amount: number, description: string, type: 'income' | 'expense') => void;
+  onReorderGoals: (startIndex: number, endIndex: number) => void;
 }
 
 export const GoalProgress: React.FC<GoalProgressProps> = ({ 
@@ -17,7 +36,8 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   onUpdateGoal, 
   onDeleteGoal,
   onAddGoal,
-  onAddTransaction
+  onAddTransaction,
+  onReorderGoals
 }) => {
   const [showNewGoalForm, setShowNewGoalForm] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -26,6 +46,7 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
+  const [newlyAddedGoals, setNewlyAddedGoals] = useState<Set<string>>(new Set());
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight
@@ -45,6 +66,20 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   }, []);
 
   const handleGoalAdded = (goal: Omit<Goal, 'id'>) => {
+    const newGoalId = Date.now().toString();
+    
+    // Marcar como recién agregado
+    setNewlyAddedGoals(prev => new Set(prev).add(newGoalId));
+    
+    // Remover de recién agregados después de 2.5 segundos (tiempo de animación completa)
+    setTimeout(() => {
+      setNewlyAddedGoals(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(newGoalId);
+        return newSet;
+      });
+    }, 2500);
+    
     onAddGoal(goal);
     setShowNewGoalForm(false);
   };
@@ -121,6 +156,206 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
     setGoalToDelete(null);
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = goals.findIndex((goal) => goal.id === active.id);
+      const newIndex = goals.findIndex((goal) => goal.id === over?.id);
+
+      onReorderGoals(oldIndex, newIndex);
+    }
+  };
+
+  // Componente para un objetivo sortable
+  const SortableGoalItem: React.FC<{ goal: Goal; index: number }> = ({ goal }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: goal.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+    const remaining = goal.targetAmount - goal.currentAmount;
+    const isGoalReached = goal.currentAmount >= goal.targetAmount;
+    const isNewlyAdded = newlyAddedGoals.has(goal.id);
+    const { daysLeft, isExpired, isToday, isUrgent } = calculateDateStatus(goal.deadline);
+
+    return (
+      <div 
+        ref={setNodeRef}
+        style={{
+          ...style,
+          borderLeft: `4px solid ${goal.color}`, 
+          background: `linear-gradient(135deg, #ffffff 0%, ${goal.color}06 100%)`
+        }}
+        className={`goal-item group bg-white rounded-xl p-3 sm:p-4 shadow-md border border-gray-100 hover:shadow-lg transition-all duration-300 ${
+          isNewlyAdded ? 'animate-new-goal' : ''
+        } ${isDragging ? 'shadow-2xl scale-105 z-50' : ''}`} 
+        {...attributes}
+        {...listeners}
+        data-goal-id={goal.id}
+      >
+        {/* Header - Unified responsive layout */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1">
+            <div className="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 mr-1" title="Arrastra para reordenar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 3h2v2H9V3zm0 4h2v2H9V7zm0 4h2v2H9v-2zm0 4h2v2H9v-2zm0 4h2v2H9v-2zM13 3h2v2h-2V3zm0 4h2v2h-2V7zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
+              </svg>
+            </div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base" style={{backgroundColor: `${goal.color}20`, color: goal.color}}>
+              🎯
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-gray-900 text-base sm:text-lg leading-tight truncate">
+                {goal.name}
+              </h4>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs sm:text-sm text-gray-500">Meta: ${goal.targetAmount.toLocaleString()}</span>
+                {isGoalReached && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    ✓ Completado
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex space-x-1.5 ml-2">
+            <button
+              onClick={() => handleAddMoneyClick(goal)}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50"
+              disabled={isGoalReached}
+              title="Gestionar dinero"
+            >
+              <span className="text-sm sm:text-base">💰</span>
+              <span className="hidden sm:inline ml-1 text-xs font-semibold">Agregar</span>
+            </button>
+            <button
+              onClick={() => handleDeleteClick(goal)}
+              className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
+              title="Eliminar objetivo"
+            >
+              <span className="text-sm sm:text-base">🗑️</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="text-center mb-4">
+          <div className="text-xl sm:text-2xl font-bold mb-1" style={{color: goal.color}}>
+            ${goal.currentAmount.toLocaleString()}
+          </div>
+          <div className="text-xs sm:text-sm text-gray-500">
+            de ${goal.targetAmount.toLocaleString()}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <div className="flex justify-between text-xs sm:text-sm font-medium text-gray-700 mb-2">
+            <span>Progreso</span>
+            <span className="font-bold">{progress.toFixed(1)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-1000 ease-out rounded-full ${
+                isGoalReached 
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                  : 'bg-gradient-to-r'
+              }`}
+              style={{ 
+                width: `${progress}%`,
+                background: isGoalReached 
+                  ? 'linear-gradient(90deg, #10b981, #059669)'
+                  : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Info Section - Unified responsive layout */}
+        <div className="flex items-center justify-between text-xs sm:text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500">📅</span>
+            <span className="font-medium text-gray-700">{goal.deadline.toLocaleDateString('es-ES')}</span>
+          </div>
+          {!isGoalReached && (
+            <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
+              isExpired 
+                ? 'bg-red-100 text-red-700' 
+                : isToday 
+                ? 'bg-orange-100 text-orange-700'
+                : isUrgent 
+                ? 'bg-yellow-100 text-yellow-700' 
+                : 'bg-blue-100 text-blue-700'
+            }`}>
+              {isExpired 
+                ? '❌ Vencido' 
+                : isToday 
+                ? '🔥 Hoy'
+                : isUrgent 
+                ? `⚠️ ${daysLeft}d`
+                : `✅ ${daysLeft}d`
+              }
+            </span>
+          )}
+        </div>
+
+        {!isGoalReached && remaining > 0 && (
+          <div className="mt-3 p-2.5 rounded-lg" style={{backgroundColor: `${goal.color}10`}}>
+            <div className="text-center text-xs sm:text-sm text-gray-700">
+              Te faltan <span className="font-bold" style={{color: goal.color}}>${remaining.toLocaleString()}</span> para alcanzar tu objetivo
+            </div>
+          </div>
+        )}
+
+        {isGoalReached && (
+          <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+            <div className="text-center">
+              <div className="text-lg mb-1">🎉</div>
+              <div className="text-green-700 font-bold text-sm sm:text-base">
+                ¡Objetivo alcanzado!
+              </div>
+              <div className="text-green-600 text-xs mt-0.5">
+                ¡Felicitaciones por tu logro! 🎊
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Helper function to calculate date status (avoid duplication)
+  const calculateDateStatus = (deadline: Date) => {
+    const today = new Date();
+    const deadlineDate = new Date(deadline);
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+    const daysLeft = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      daysLeft,
+      isExpired: daysLeft < 0,
+      isToday: daysLeft === 0,
+      isUrgent: daysLeft > 0 && daysLeft <= 7
+    };
+  };
+
   // Calculate useful stats for the indicators
   const totalGoals = goals.length;
   const completedGoals = goals.filter(goal => goal.currentAmount >= goal.targetAmount).length;
@@ -128,12 +363,8 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const overallProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
   const urgentGoals = goals.filter(goal => {
-    const today = new Date();
-    const deadline = new Date(goal.deadline);
-    today.setHours(0, 0, 0, 0);
-    deadline.setHours(0, 0, 0, 0);
-    const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return daysLeft >= 0 && daysLeft <= 7 && goal.currentAmount < goal.targetAmount;
+    const { isUrgent } = calculateDateStatus(goal.deadline);
+    return isUrgent && goal.currentAmount < goal.targetAmount;
   }).length;
 
   return (
@@ -274,155 +505,29 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {goals.map((goal) => {
-          const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
-          const remaining = goal.targetAmount - goal.currentAmount;
-          const isGoalReached = goal.currentAmount >= goal.targetAmount;
-          
-          // Calculate days more precisely - don't show as expired if it's today
-          const today = new Date();
-          const deadline = new Date(goal.deadline);
-          today.setHours(0, 0, 0, 0);
-          deadline.setHours(0, 0, 0, 0);
-          const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          const isExpired = daysLeft < 0;
-          const isToday = daysLeft === 0;
-          const isUrgent = daysLeft > 0 && daysLeft <= 7;
-
-                      return (
-              <div key={goal.id} className="group bg-white rounded-xl p-3 sm:p-4 shadow-md border border-gray-100 hover:shadow-lg transition-all duration-300" style={{borderLeft: `4px solid ${goal.color}`, background: `linear-gradient(135deg, #ffffff 0%, ${goal.color}06 100%)`}}>
-                {/* Header - Unified responsive layout */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base" style={{backgroundColor: `${goal.color}20`, color: goal.color}}>
-                      🎯
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-gray-900 text-base sm:text-lg leading-tight truncate">
-                        {goal.name}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs sm:text-sm text-gray-500">Meta: ${goal.targetAmount.toLocaleString()}</span>
-                        {isGoalReached && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ✓ Completado
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-1.5 ml-2">
-                    <button
-                      onClick={() => handleAddMoneyClick(goal)}
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50"
-                      disabled={isGoalReached}
-                      title="Gestionar dinero"
-                    >
-                      <span className="text-sm sm:text-base">💰</span>
-                      <span className="hidden sm:inline ml-1 text-xs font-semibold">Agregar</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(goal)}
-                      className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
-                      title="Eliminar objetivo"
-                    >
-                      <span className="text-sm sm:text-base">🗑️</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="text-center mb-4">
-                  <div className="text-xl sm:text-2xl font-bold mb-1" style={{color: goal.color}}>
-                    ${goal.currentAmount.toLocaleString()}
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-500">
-                    de ${goal.targetAmount.toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                    <span>Progreso</span>
-                    <span className="font-bold">{progress.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-1000 ease-out rounded-full ${
-                        isGoalReached 
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                          : 'bg-gradient-to-r'
-                      }`}
-                      style={{ 
-                        width: `${progress}%`,
-                        background: isGoalReached 
-                          ? 'linear-gradient(90deg, #10b981, #059669)'
-                          : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Info Section - Unified responsive layout */}
-                <div className="flex items-center justify-between text-xs sm:text-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500">📅</span>
-                    <span className="font-medium text-gray-700">{goal.deadline.toLocaleDateString('es-ES')}</span>
-                  </div>
-                  {!isGoalReached && (
-                    <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
-                      isExpired 
-                        ? 'bg-red-100 text-red-700' 
-                        : isToday 
-                        ? 'bg-orange-100 text-orange-700'
-                        : isUrgent 
-                        ? 'bg-yellow-100 text-yellow-700' 
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {isExpired 
-                        ? '❌ Vencido' 
-                        : isToday 
-                        ? '🔥 Hoy'
-                        : isUrgent 
-                        ? `⚠️ ${daysLeft}d`
-                        : `✅ ${daysLeft}d`
-                      }
-                    </span>
-                  )}
-                </div>
-
-                {!isGoalReached && remaining > 0 && (
-                  <div className="mt-3 p-2.5 rounded-lg" style={{backgroundColor: `${goal.color}10`}}>
-                    <div className="text-center text-xs sm:text-sm text-gray-700">
-                      Te faltan <span className="font-bold" style={{color: goal.color}}>${remaining.toLocaleString()}</span> para alcanzar tu objetivo
-                    </div>
-                  </div>
-                )}
-
-                {isGoalReached && (
-                  <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-center">
-                      <div className="text-lg mb-1">🎉</div>
-                      <div className="text-green-700 font-bold text-sm sm:text-base">
-                        ¡Objetivo alcanzado!
-                      </div>
-                      <div className="text-green-600 text-xs mt-0.5">
-                        ¡Felicitaciones por tu logro! 🎊
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext 
+            items={goals.map(goal => goal.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3 goals-container">
+              {goals.map((goal, index) => (
+                <SortableGoalItem key={goal.id} goal={goal} index={index} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
       
       {/* Celebration Modal with Confetti */}
       {showCelebration && celebrationGoal && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn" style={{margin: 0, padding: '1rem', minHeight: '100vh', minWidth: '100vw'}}>
             {/* Modal */}
             <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
               <div className="mb-6">
@@ -463,15 +568,17 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
           </div>
           
           {/* Confetti Animation - Higher z-index */}
-          <div className="fixed inset-0 pointer-events-none z-[9999]">
+          <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden" style={{margin: 0, padding: 0, top: 0, left: 0, right: 0, bottom: 0}}>
             <Confetti
               width={windowDimensions.width}
               height={windowDimensions.height}
-              recycle={false}
-              numberOfPieces={300}
-              gravity={0.05}
-              initialVelocityY={-15}
-              colors={['#10B981', '#059669', '#34D399', '#6EE7B7', '#A7F3D0']}
+              recycle={true}
+              numberOfPieces={150}
+              gravity={0.04}
+              initialVelocityY={-12}
+              initialVelocityX={3}
+              wind={0.005}
+              colors={['#10B981', '#059669', '#34D399', '#6EE7B7', '#A7F3D0', '#F59E0B']}
             />
           </div>
         </>

@@ -13,4 +13,5 @@ export interface Goal {
   currentAmount: number;
   deadline: Date;
   color: string;
+  order: number;
 }

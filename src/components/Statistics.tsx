@@ -18,14 +18,14 @@ export const Statistics: React.FC<StatisticsProps> = ({
   const averageTransaction = transactionCount > 0 ? balance / transactionCount : 0;
 
   return (
-    <div className="card mb-6 animate-slide-in">
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
       <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3">
         <span className="text-2xl">📊</span>
         Estadísticas Financieras
       </h3>
       
-      <div className="stats-grid grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div className="stat-card stat-card-income group">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-xl border border-emerald-200 group hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-white/60 rounded-2xl">
               <div className="text-3xl text-emerald-600 group-hover:scale-110 transition-transform duration-300">💰</div>
@@ -40,7 +40,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <div className="text-sm text-emerald-600 font-medium">Total Ingresos</div>
         </div>
         
-        <div className="stat-card stat-card-expense group">
+        <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200 group hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-white/60 rounded-2xl">
               <div className="text-3xl text-red-600 group-hover:scale-110 transition-transform duration-300">💸</div>
@@ -55,7 +55,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <div className="text-sm text-red-600 font-medium">Total Gastos</div>
         </div>
         
-        <div className="stat-card stat-card-balance group">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 group hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-white/60 rounded-2xl">
               <div className="text-3xl text-blue-600 group-hover:scale-110 transition-transform duration-300">📈</div>
@@ -72,7 +72,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <div className="text-sm text-blue-600 font-medium">Balance Neto</div>
         </div>
         
-        <div className="stat-card stat-card-info group">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200 group hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-white/60 rounded-2xl">
               <div className="text-3xl text-gray-600 group-hover:scale-110 transition-transform duration-300">📝</div>

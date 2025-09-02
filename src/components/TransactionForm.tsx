@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MoneyInput } from './MoneyInput';
 
 interface TransactionFormProps {
   onAddTransaction: (amount: number, description: string, type: 'income' | 'expense') => void;
@@ -42,14 +43,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransacti
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Cantidad
             </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
+            <MoneyInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
               placeholder="0.00"
-              className="input-field"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 bg-white text-gray-900 font-medium"
+              min={0.01}
               required
             />
           </div>
