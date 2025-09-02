@@ -92,18 +92,46 @@ function App() {
     
   const balance = totalIncome - totalExpenses;
 
+  // Si no hay objetivos, mostrar la página de configuración inicial
+  if (goals.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              💰 Money Counter
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Gestiona tus finanzas con objetivos claros
+            </p>
+          </div>
+          
+          <GoalSettings onAddGoal={addGoal} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-              💰 Money Counter
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600">
-              Gestiona tus finanzas de manera inteligente
-            </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                💰 Money Counter
+              </h1>
+              <p className="text-sm text-gray-600">
+                Balance: <span className={`font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${balance.toFixed(2)}
+                </span>
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">Objetivos activos</div>
+              <div className="text-lg font-bold text-blue-600">{goals.length}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -118,23 +146,13 @@ function App() {
               label: 'Objetivos',
               icon: '🎯',
               content: (
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
-                      Configurar Objetivos
-                    </h2>
-                    <GoalSettings onAddGoal={addGoal} />
-                  </div>
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
-                      Progreso de Objetivos
-                    </h2>
-                    <GoalProgress 
-                      goals={goals}
-                      onUpdateGoal={updateGoal}
-                      onDeleteGoal={deleteGoal}
-                    />
-                  </div>
+                <div className="space-y-6">
+                  <GoalProgress 
+                    goals={goals}
+                    onUpdateGoal={updateGoal}
+                    onDeleteGoal={deleteGoal}
+                    onAddGoal={addGoal}
+                  />
                 </div>
               ),
             },
@@ -142,46 +160,51 @@ function App() {
               id: 'transacciones',
               label: 'Transacciones',
               icon: '💳',
-              disabled: goals.length === 0,
               content: (
-                <div className="space-y-4 sm:space-y-6">
-                  {/* Balance Overview */}
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                    <div className="text-center mb-6">
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Balance Total</h2>
-                      <div className={`text-3xl sm:text-4xl font-bold mb-4 ${
-                        balance >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        ${balance.toFixed(2)}
+                <div className="space-y-6">
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">${totalIncome.toFixed(2)}</div>
+                        <div className="text-sm text-gray-600">Ingresos</div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-green-50 rounded-lg p-3 sm:p-4 text-center">
-                          <div className="text-lg sm:text-xl font-bold text-green-700">
-                            ${totalIncome.toFixed(2)}
-                          </div>
-                          <div className="text-xs sm:text-sm text-green-600 font-medium">
-                            Ingresos
-                          </div>
-                        </div>
-                        <div className="bg-red-50 rounded-lg p-3 sm:p-4 text-center">
-                          <div className="text-lg sm:text-xl font-bold text-red-700">
-                            ${totalExpenses.toFixed(2)}
-                          </div>
-                          <div className="text-xs sm:text-sm text-red-600 font-medium">
-                            Gastos
-                          </div>
-                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                        <div className="text-sm text-gray-600">Gastos</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Transaction Form */}
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 text-center">
+                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
                       Nueva Transacción
                     </h2>
                     <TransactionForm onAddTransaction={addTransaction} />
                   </div>
+
+                  {/* Recent Transactions */}
+                  {transactions.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                      <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
+                        Transacciones Recientes
+                      </h2>
+                      <TransactionList 
+                        transactions={transactions.slice(0, 5)}
+                        onDeleteTransaction={deleteTransaction}
+                      />
+                      {transactions.length > 5 && (
+                        <div className="text-center mt-4">
+                          <div className="text-blue-600 font-medium">
+                          Ver todas las transacciones en la pestaña Historial →
+                        </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ),
             },
@@ -189,11 +212,10 @@ function App() {
               id: 'historial',
               label: 'Historial',
               icon: '📋',
-              disabled: goals.length === 0,
               content: (
-                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
-                    Historial de Transacciones
+                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
+                    Historial Completo
                   </h2>
                   <TransactionList 
                     transactions={transactions}
@@ -206,11 +228,10 @@ function App() {
               id: 'estadisticas',
               label: 'Estadísticas',
               icon: '📊',
-              disabled: goals.length === 0,
               content: (
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
+                <div className="space-y-6">
+                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
                       Estadísticas Financieras
                     </h2>
                     <Statistics 
@@ -220,8 +241,8 @@ function App() {
                       balance={balance}
                     />
                   </div>
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
+                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
                       Configuración
                     </h2>
                     <div className="text-center">
