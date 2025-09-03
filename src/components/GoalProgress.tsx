@@ -145,8 +145,7 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
     // Add transaction if callback is provided
     if (onAddTransaction) {
       const transactionType = isAddition ? 'income' : 'expense';
-      const actionText = isAddition ? 'Agregado a' : 'Quitado de';
-      onAddTransaction(amount, `${description} (${actionText} objetivo: ${selectedGoal.name})`, transactionType, {
+      onAddTransaction(amount, `${description} - ${selectedGoal.name}`, transactionType, {
         goalId: selectedGoal.id,
         goalEmoji: selectedGoal.emoji,
         goalColor: selectedGoal.color
@@ -716,7 +715,7 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
 
         {/* New Goal Form */}
         {showNewGoalForm && (
-          <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+          <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200">
             <GoalForm 
               onAddGoal={handleGoalAdded}
               onCancel={() => setShowNewGoalForm(false)}

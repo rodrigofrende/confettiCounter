@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Transaction } from '../types';
+import { Achievements } from './Achievements';
 
 interface StatisticsProps {
   transactions: Transaction[];
@@ -18,11 +19,12 @@ export const Statistics: React.FC<StatisticsProps> = ({
   const averageTransaction = transactionCount > 0 ? balance / transactionCount : 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
-      <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3">
-        <span className="text-2xl">📊</span>
-        Estadísticas Financieras
-      </h3>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3">
+          <span className="text-2xl">📊</span>
+          Estadísticas Financieras
+        </h3>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-xl border border-emerald-200 group hover:shadow-lg transition-all duration-300">
@@ -96,6 +98,10 @@ export const Statistics: React.FC<StatisticsProps> = ({
           </div>
         </div>
       )}
+      </div>
+      
+      {/* Sistema de Logros */}
+      <Achievements />
     </div>
   );
 };

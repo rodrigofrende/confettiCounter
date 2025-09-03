@@ -214,10 +214,10 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
                   isAddition ? 'focus:ring-green-500' : 'focus:ring-red-500'
                 }`}
                 required
-                maxLength={50}
+                maxLength={35}
               />
               <div className="text-xs text-gray-500 mt-1">
-                {description.length}/50 caracteres
+                {description.length}/35 caracteres
               </div>
             </div>
 

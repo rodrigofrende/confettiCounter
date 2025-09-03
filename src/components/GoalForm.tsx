@@ -22,7 +22,7 @@ export const GoalForm: React.FC<GoalFormProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  const MAX_NAME_LENGTH = 50;
+  const MAX_NAME_LENGTH = 35;
 
   // Cerrar el selector de emojis al hacer clic fuera
   useEffect(() => {
@@ -136,7 +136,7 @@ export const GoalForm: React.FC<GoalFormProps> = ({
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-xl hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white hover:bg-gray-50 text-lg h-[52px]"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300 h-[52px]"
             >
               <span className="text-2xl">{emoji}</span>
               <div className="text-left flex-1">

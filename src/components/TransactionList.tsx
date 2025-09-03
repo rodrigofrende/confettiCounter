@@ -162,10 +162,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     onChange={(e) => setEditForm(prev => ({...prev, description: e.target.value}))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-lg font-medium"
                     placeholder="Descripción de la transacción"
-                    maxLength={50}
+                    maxLength={35}
                   />
                   <div className="text-xs text-gray-500 mt-1">
-                    {editForm.description.length}/50 caracteres
+                    {editForm.description.length}/35 caracteres
                   </div>
                 </div>
                 
@@ -241,7 +241,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-900 text-lg truncate">
-                      {transaction.description}
+                      {transaction.description.includes(' - ') ? (
+                        <>
+                          {transaction.description.split(' - ')[0]}
+                          <span className="text-gray-500 font-normal"> - {transaction.description.split(' - ')[1]}</span>
+                        </>
+                      ) : (
+                        transaction.description
+                      )}
                     </div>
                     <div className="text-sm text-gray-500 mt-1">
                       {transaction.date.toLocaleDateString('es-ES', {
