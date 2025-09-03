@@ -158,7 +158,7 @@ function App() {
       
       // Sincronizar objetivos si se modificó una transacción relacionada (con delay para permitir animaciones)
       const transaction = prev.find(t => t.id === id);
-      if (transaction && transaction.description.includes('objetivo:')) {
+      if (transaction && transaction.description.includes(' - ')) {
         setTimeout(() => {
           syncGoalsWithTransactions(updatedTransactions);
         }, 100);
@@ -174,7 +174,7 @@ function App() {
       
       // Sincronizar objetivos después de eliminar transacción (con delay para permitir animaciones)
       const deletedTransaction = prev.find(t => t.id === id);
-      if (deletedTransaction && deletedTransaction.description.includes('objetivo:')) {
+      if (deletedTransaction && deletedTransaction.description.includes(' - ')) {
         setTimeout(() => {
           syncGoalsWithTransactions(updatedTransactions);
         }, 100);
@@ -189,7 +189,7 @@ function App() {
     setGoals(prev => prev.map(goal => {
       // Buscar todas las transacciones relacionadas con este objetivo
       const relatedTransactions = transactions.filter(t => 
-        t.description.includes(`objetivo: ${goal.name}`)
+        t.description.includes(` - ${goal.name}`)
       );
       
       // Si no hay transacciones relacionadas, mantener el objetivo sin cambios
