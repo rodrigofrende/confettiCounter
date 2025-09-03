@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { Goal } from '../types';
 import { GoalForm } from './GoalForm';
 import { AddMoneyModal } from './AddMoneyModal';
+import { useLazyLoad } from '../hooks/useLazyLoad';
+import { GoalItemSkeleton, LoadingSpinner } from './SkeletonLoader';
 import Confetti from 'react-confetti';
 import {
   DndContext,
@@ -47,9 +49,23 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [newlyAddedGoals, setNewlyAddedGoals] = useState<Set<string>>(new Set());
+  const [animatingGoals, setAnimatingGoals] = useState<Set<string>>(new Set());
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight
+  });
+
+  // Lazy loading hook para objetivos
+  const { 
+    visibleItems: visibleGoals, 
+    hasMore, 
+    isLoading, 
+    observerRef 
+  } = useLazyLoad({
+    items: goals,
+    initialLoadCount: 6,
+    loadMoreCount: 4,
+    threshold: 0.3
   });
 
   // Update window dimensions for confetti
@@ -116,10 +132,15 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
     
     // Calculate new amount based on addition or subtraction
     const finalAmount = isAddition ? amount : -amount;
-    const newAmount = selectedGoal.currentAmount + finalAmount;
+    const newAmount = Math.max(0, selectedGoal.currentAmount + finalAmount);
     
-    // Update goal current amount
-    handleUpdateGoal(selectedGoal.id, { currentAmount: newAmount });
+    // Activar animación para este objetivo inmediatamente
+    setAnimatingGoals(prev => new Set(prev).add(selectedGoal.id));
+    
+    // Update goal current amount con un pequeño delay para que la animación sea visible
+    setTimeout(() => {
+      handleUpdateGoal(selectedGoal.id, { currentAmount: newAmount });
+    }, 150);
     
     // Add transaction if callback is provided
     if (onAddTransaction) {
@@ -127,6 +148,15 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
       const actionText = isAddition ? 'Agregado a' : 'Quitado de';
       onAddTransaction(amount, `${description} (${actionText} objetivo: ${selectedGoal.name})`, transactionType);
     }
+    
+    // Remover animación después de que termine (extendido para las animaciones más lentas)
+    setTimeout(() => {
+      setAnimatingGoals(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedGoal.id);
+        return newSet;
+      });
+    }, 2400);
     
     // Close modal and reset selected goal
     setShowAddMoneyModal(false);
@@ -185,42 +215,54 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
       isDragging,
     } = useSortable({ id: goal.id });
 
-    const style = {
+    // Separar los estilos DND de las animaciones de progreso
+    const dndStyle = {
       transform: CSS.Transform.toString(transform),
-      transition,
+      transition: isDragging ? transition : undefined, // Solo aplicar transition DND cuando se arrastra
     };
 
     const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
     const remaining = goal.targetAmount - goal.currentAmount;
     const isGoalReached = goal.currentAmount >= goal.targetAmount;
     const isNewlyAdded = newlyAddedGoals.has(goal.id);
+    const isAnimating = animatingGoals.has(goal.id) && !isDragging; // Desactivar animaciones durante el drag
     const { daysLeft, isExpired, isToday, isUrgent } = calculateDateStatus(goal.deadline);
 
     return (
       <div 
         ref={setNodeRef}
         style={{
-          ...style,
+          ...dndStyle,
           borderLeft: `4px solid ${goal.color}`, 
-          background: `linear-gradient(135deg, #ffffff 0%, ${goal.color}06 100%)`
+          background: `linear-gradient(135deg, #ffffff 0%, ${goal.color}06 100%)`,
+          boxShadow: isAnimating 
+            ? `0 0 0 2px ${goal.color}40, 0 8px 25px rgba(0,0,0,0.15)` 
+            : undefined
         }}
-        className={`goal-item group bg-white rounded-xl p-3 sm:p-4 shadow-md border border-gray-100 hover:shadow-lg transition-all duration-300 ${
-          isNewlyAdded ? 'animate-new-goal' : ''
-        } ${isDragging ? 'shadow-2xl scale-105 z-50' : ''}`} 
+        className={`goal-item group bg-white rounded-xl p-3 sm:p-4 shadow-md border border-gray-100 hover:shadow-lg ${
+          !isDragging ? 'transition-all duration-300' : ''
+        } ${isNewlyAdded ? 'animate-new-goal' : ''} ${
+          isDragging ? 'shadow-2xl scale-105 z-50' : ''
+        } ${isAnimating && !isDragging ? 'ring-2 ring-opacity-50 shadow-xl' : ''}`} 
         {...attributes}
-        {...listeners}
         data-goal-id={goal.id}
       >
         {/* Header - Unified responsive layout */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 sm:gap-3 flex-1">
-            <div className="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 mr-1" title="Arrastra para reordenar">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 3h2v2H9V3zm0 4h2v2H9V7zm0 4h2v2H9v-2zm0 4h2v2H9v-2zm0 4h2v2H9v-2zM13 3h2v2h-2V3zm0 4h2v2h-2V7zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
+            <div 
+              className="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-all duration-200" 
+              title="Arrastra para reordenar"
+              {...listeners}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
               </svg>
             </div>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base" style={{backgroundColor: `${goal.color}20`, color: goal.color}}>
-              🎯
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center" style={{backgroundColor: `${goal.color}20`, color: goal.color}}>
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-bold text-gray-900 text-base sm:text-lg leading-tight truncate">
@@ -238,26 +280,60 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
           </div>
           <div className="flex space-x-1.5 ml-2">
             <button
-              onClick={() => handleAddMoneyClick(goal)}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddMoneyClick(goal);
+              }}
+              className="group relative bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:transform-none pointer-events-auto"
               disabled={isGoalReached}
               title="Gestionar dinero"
             >
-              <span className="text-sm sm:text-base">💰</span>
-              <span className="hidden sm:inline ml-1 text-xs font-semibold">Agregar</span>
+              <div className="flex items-center space-x-1">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span className="hidden sm:inline text-xs font-semibold">Agregar</span>
+              </div>
+              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
             </button>
             <button
-              onClick={() => handleDeleteClick(goal)}
-              className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteClick(goal);
+              }}
+              className="group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl pointer-events-auto"
               title="Eliminar objetivo"
             >
-              <span className="text-sm sm:text-base">🗑️</span>
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
             </button>
           </div>
         </div>
 
         <div className="text-center mb-4">
-          <div className="text-xl sm:text-2xl font-bold mb-1" style={{color: goal.color}}>
+          <div 
+            className={`text-xl sm:text-2xl font-bold mb-1 transition-all duration-500 ease-out ${
+              isAnimating ? 'progress-animating' : ''
+            }`} 
+            style={{
+              color: goal.color,
+              ...(isAnimating && {
+                textShadow: `0 0 25px ${goal.color}60, 0 0 10px ${goal.color}40, 0 0 5px ${goal.color}20`,
+                filter: 'brightness(1.3) saturate(1.2)',
+                animation: 'amount-highlight 1.8s ease-out',
+                transform: 'scale(1.15)',
+                willChange: 'transform, filter'
+              }),
+              ...(!isAnimating && {
+                textShadow: 'none',
+                filter: 'brightness(1)',
+                transform: 'scale(1)'
+              })
+            }}
+            key={`amount-text-${goal.id}`}
+          >
             ${goal.currentAmount.toLocaleString()}
           </div>
           <div className="text-xs sm:text-sm text-gray-500">
@@ -270,20 +346,49 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
             <span>Progreso</span>
             <span className="font-bold">{progress.toFixed(1)}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden">
+          <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden relative">
             <div 
-              className={`h-full transition-all duration-1000 ease-out rounded-full ${
+              className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
                 isGoalReached 
                   ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
                   : 'bg-gradient-to-r'
-              }`}
+              } ${isAnimating ? 'progress-animating' : ''}`}
               style={{ 
                 width: `${progress}%`,
                 background: isGoalReached 
                   ? 'linear-gradient(90deg, #10b981, #059669)'
-                  : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`
+                  : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`,
+                transitionDuration: isAnimating ? '2200ms' : '800ms',
+                transitionTimingFunction: isAnimating 
+                  ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' 
+                  : 'cubic-bezier(0.4, 0, 0.2, 1)',
+                ...(isAnimating && {
+                  transform: 'scaleY(1.2) scaleX(1.01)',
+                  transformOrigin: 'left center',
+                  boxShadow: `0 0 15px ${goal.color}60, 0 2px 8px ${goal.color}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
+                }),
+                ...(!isAnimating && {
+                  transform: 'scaleY(1) scaleX(1)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                }),
+                position: 'relative',
+                zIndex: 1,
+                willChange: isAnimating ? 'transform, box-shadow, width' : 'width'
               }}
-            />
+              key={`progress-bar-${goal.id}`}
+            >
+              {/* Efecto de brillo animado - solo cuando está animando */}
+              {isAnimating && (
+                <div 
+                  className="absolute inset-0 rounded-full opacity-60"
+                  style={{
+                    background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)`,
+                    animation: 'shimmer 1.8s ease-in-out infinite',
+                    willChange: 'transform, opacity'
+                  }}
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -433,12 +538,21 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
           {/* Right Section - New Goal Button */}
           <button
             onClick={() => setShowNewGoalForm(!showNewGoalForm)}
-            className="group relative bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2.5 px-4 sm:py-3 sm:px-5 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+            className="group relative bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-semibold py-2.5 px-4 sm:py-3 sm:px-5 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
           >
             <div className="flex items-center space-x-2">
-              <span className="text-lg">{showNewGoalForm ? '✖️' : '➕'}</span>
+              {showNewGoalForm ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              )}
               <span className="font-bold">{showNewGoalForm ? 'Cancelar' : 'Nuevo Objetivo'}</span>
             </div>
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
           </button>
         </div>
 
@@ -505,22 +619,38 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
           </div>
         </div>
       ) : (
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext 
-            items={goals.map(goal => goal.id)}
-            strategy={verticalListSortingStrategy}
+        // Mostrar skeletons durante la carga inicial
+        goals.length > 0 && visibleGoals.length === 0 ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <GoalItemSkeleton key={`skeleton-${index}`} />
+            ))}
+          </div>
+        ) : (
+          <DndContext 
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className="space-y-3 goals-container">
-              {goals.map((goal, index) => (
-                <SortableGoalItem key={goal.id} goal={goal} index={index} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+            <SortableContext 
+              items={visibleGoals.map(goal => goal.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-3 goals-container">
+                {visibleGoals.map((goal, index) => (
+                  <SortableGoalItem key={goal.id} goal={goal} index={index} />
+                ))}
+                
+                {/* Elemento observador para lazy loading */}
+                {hasMore && (
+                  <div ref={observerRef} className="h-4 flex justify-center items-center">
+                    {isLoading && <LoadingSpinner size="sm" />}
+                  </div>
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )
       )}
       
       {/* Celebration Modal with Confetti */}
@@ -607,8 +737,10 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
               </p>
               <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
                 <div className="flex items-center justify-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{backgroundColor: `${goalToDelete.color}20`, color: goalToDelete.color}}>
-                    🎯
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{backgroundColor: `${goalToDelete.color}20`, color: goalToDelete.color}}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
                   </div>
                   <h3 className="text-xl font-bold text-red-800">
                     {goalToDelete.name}
@@ -631,21 +763,27 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
             <div className="flex space-x-3">
               <button
                 onClick={cancelDeleteGoal}
-                className="flex-1 group relative bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                className="flex-1 group relative bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
               >
                 <div className="flex items-center justify-center space-x-2">
-                  <span className="text-lg">❌</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                   <span>Cancelar</span>
                 </div>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
               </button>
               <button
                 onClick={confirmDeleteGoal}
-                className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
               >
                 <div className="flex items-center justify-center space-x-2">
-                  <span className="text-lg">🗑️</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
                   <span>Sí, eliminar</span>
                 </div>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
               </button>
             </div>
           </div>

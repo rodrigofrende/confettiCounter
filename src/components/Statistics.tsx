@@ -35,7 +35,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold text-emerald-700 mb-1">
-            ${totalIncome.toFixed(2)}
+            ${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-sm text-emerald-600 font-medium">Total Ingresos</div>
         </div>
@@ -50,7 +50,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold text-red-700 mb-1">
-            ${totalExpenses.toFixed(2)}
+            ${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-sm text-red-600 font-medium">Total Gastos</div>
         </div>
@@ -67,7 +67,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             </div>
           </div>
           <div className={`text-2xl font-bold mb-1 ${balance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-            ${balance.toFixed(2)}
+            ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-sm text-blue-600 font-medium">Balance Neto</div>
         </div>
@@ -92,7 +92,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center">
           <div className="text-sm text-gray-600 mb-1">Promedio por Transacción</div>
           <div className={`text-lg font-bold ${averageTransaction >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ${averageTransaction.toFixed(2)}
+            ${averageTransaction.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       )}

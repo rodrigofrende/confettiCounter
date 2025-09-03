@@ -6,43 +6,86 @@ import { GoalProgress } from './components/GoalProgress';
 import { GoalSettings } from './components/GoalSettings';
 import { ResetButton } from './components/ResetButton';
 import { Tabs } from './components/Tabs';
+import { WelcomeScreen } from './components/WelcomeScreen';
 
 function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
 
   // Load data from localStorage on component mount
   useEffect(() => {
     const savedTransactions = localStorage.getItem('money-counter-transactions');
     const savedGoals = localStorage.getItem('money-counter-goals');
+    const hasVisitedBefore = localStorage.getItem('money-counter-visited');
     
-    if (savedTransactions) {
-      setTransactions(JSON.parse(savedTransactions).map((t: any) => ({
-        ...t,
-        date: new Date(t.date)
-      })));
+    console.log('Loading data from localStorage...');
+    console.log('Saved transactions:', savedTransactions);
+    console.log('Saved goals:', savedGoals);
+    
+    // Show welcome screen if it's the first visit
+    if (!hasVisitedBefore) {
+      setShowWelcomeScreen(true);
     }
     
-    if (savedGoals) {
-      const parsedGoals = JSON.parse(savedGoals).map((g: any) => ({
-        ...g,
-        deadline: new Date(g.deadline),
-        order: g.order !== undefined ? g.order : 0
-      }));
-      // Ordenar por el campo order
-      parsedGoals.sort((a: Goal, b: Goal) => a.order - b.order);
-      setGoals(parsedGoals);
+    if (savedTransactions && savedTransactions !== '[]') {
+      try {
+        const parsedTransactions = JSON.parse(savedTransactions).map((t: any) => ({
+          ...t,
+          date: new Date(t.date)
+        }));
+        console.log('Parsed transactions:', parsedTransactions);
+        setTransactions(parsedTransactions);
+      } catch (error) {
+        console.error('Error parsing transactions:', error);
+      }
+    }
+    
+    if (savedGoals && savedGoals !== '[]') {
+      try {
+        const parsedGoals = JSON.parse(savedGoals).map((g: any) => ({
+          ...g,
+          deadline: new Date(g.deadline),
+          order: g.order !== undefined ? g.order : 0
+        }));
+        // Ordenar por el campo order
+        parsedGoals.sort((a: Goal, b: Goal) => a.order - b.order);
+        console.log('Parsed goals:', parsedGoals);
+        setGoals(parsedGoals);
+      } catch (error) {
+        console.error('Error parsing goals:', error);
+      }
     }
   }, []);
 
-  // Save data to localStorage whenever it changes
+  // Save data to localStorage whenever it changes (but don't save initial empty arrays)
   useEffect(() => {
-    localStorage.setItem('money-counter-transactions', JSON.stringify(transactions));
+    // Solo guardar si hay transacciones o si no es la carga inicial
+    if (transactions.length > 0) {
+      console.log('Saving transactions to localStorage:', transactions);
+      localStorage.setItem('money-counter-transactions', JSON.stringify(transactions));
+    }
   }, [transactions]);
 
   useEffect(() => {
-    localStorage.setItem('money-counter-goals', JSON.stringify(goals));
+    // Solo guardar si hay objetivos o si no es la carga inicial
+    if (goals.length > 0) {
+      console.log('Saving goals to localStorage:', goals);
+      localStorage.setItem('money-counter-goals', JSON.stringify(goals));
+    }
   }, [goals]);
+
+
+
+  const handleWelcomeComplete = () => {
+    setShowWelcomeScreen(false);
+    localStorage.setItem('money-counter-visited', 'true');
+  };
+
+  const showWelcomeTour = () => {
+    setShowWelcomeScreen(true);
+  };
 
   const addTransaction = (amount: number, description: string, type: 'income' | 'expense') => {
     const newTransaction: Transaction = {
@@ -57,7 +100,66 @@ function App() {
   };
 
   const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id' | 'date'>>) => {
-    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setTransactions(prev => {
+      const updatedTransactions = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      
+      // Sincronizar objetivos si se modificó una transacción relacionada (con delay para permitir animaciones)
+      const transaction = prev.find(t => t.id === id);
+      if (transaction && transaction.description.includes('objetivo:')) {
+        setTimeout(() => {
+          syncGoalsWithTransactions(updatedTransactions);
+        }, 100);
+      }
+      
+      return updatedTransactions;
+    });
+  };
+
+  const deleteTransaction = (id: string) => {
+    setTransactions(prev => {
+      const updatedTransactions = prev.filter(t => t.id !== id);
+      
+      // Sincronizar objetivos después de eliminar transacción (con delay para permitir animaciones)
+      const deletedTransaction = prev.find(t => t.id === id);
+      if (deletedTransaction && deletedTransaction.description.includes('objetivo:')) {
+        setTimeout(() => {
+          syncGoalsWithTransactions(updatedTransactions);
+        }, 100);
+      }
+      
+      return updatedTransactions;
+    });
+  };
+
+  // Función para sincronizar objetivos con transacciones
+  const syncGoalsWithTransactions = (transactions: Transaction[]) => {
+    setGoals(prev => prev.map(goal => {
+      // Buscar todas las transacciones relacionadas con este objetivo
+      const relatedTransactions = transactions.filter(t => 
+        t.description.includes(`objetivo: ${goal.name}`)
+      );
+      
+      // Si no hay transacciones relacionadas, mantener el objetivo sin cambios
+      if (relatedTransactions.length === 0) {
+        return goal;
+      }
+      
+      // Calcular el monto total de las transacciones relacionadas
+      const totalFromTransactions = relatedTransactions.reduce((sum, t) => {
+        return sum + (t.type === 'income' ? t.amount : -t.amount);
+      }, 0);
+      
+      // Solo actualizar si el valor calculado es diferente al actual
+      const newAmount = Math.max(0, totalFromTransactions);
+      if (newAmount !== goal.currentAmount) {
+        return {
+          ...goal,
+          currentAmount: newAmount
+        };
+      }
+      
+      return goal;
+    }));
   };
 
   const addGoal = (goal: Omit<Goal, 'id'>) => {
@@ -92,12 +194,19 @@ function App() {
   };
 
   const resetAll = () => {
-    if (window.confirm('¿Estás seguro de que quieres reiniciar todo? Esta acción no se puede deshacer.')) {
-      setTransactions([]);
-      setGoals([]);
-      localStorage.removeItem('money-counter-transactions');
-      localStorage.removeItem('money-counter-goals');
-    }
+    setShowResetModal(true);
+  };
+
+  const confirmReset = () => {
+    setTransactions([]);
+    setGoals([]);
+    localStorage.removeItem('money-counter-transactions');
+    localStorage.removeItem('money-counter-goals');
+    setShowResetModal(false);
+  };
+
+  const cancelReset = () => {
+    setShowResetModal(false);
   };
 
   const totalIncome = transactions
@@ -111,22 +220,93 @@ function App() {
   const balance = totalIncome - totalExpenses;
 
   // Si no hay objetivos, mostrar la página de configuración inicial
+  
+  // Welcome Screen debe renderizarse siempre, independientemente de si hay objetivos
+  const welcomeScreenModal = showWelcomeScreen && (
+    <WelcomeScreen onComplete={handleWelcomeComplete} />
+  );
+  
   if (goals.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              💰 Money Counter
-            </h1>
-            <p className="text-gray-600 text-lg">
-              Gestiona tus finanzas con objetivos claros
-            </p>
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                💰 Money Counter
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Gestiona tus finanzas con objetivos claros
+              </p>
+            </div>
+            
+            <GoalSettings onAddGoal={addGoal} onShowWelcomeTour={showWelcomeTour} />
           </div>
-          
-          <GoalSettings onAddGoal={addGoal} />
         </div>
-      </div>
+
+        {/* Modal de confirmación de reseteo */}
+        {showResetModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
+              <div className="mb-6">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  ¿Estás seguro?
+                </h2>
+                <p className="text-lg text-gray-700 mb-4">
+                  Gestión de Datos
+                </p>
+                <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
+                  <p className="text-red-800 font-bold text-lg mb-2">
+                    Esta acción eliminará todas las transacciones y reseteará el objetivo.
+                  </p>
+                  <p className="text-red-700 text-sm">
+                    Esta acción no se puede deshacer.
+                  </p>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+                  <p className="text-yellow-800 text-sm font-medium">
+                    ⚠️ Se perderán todos los datos guardados incluyendo:
+                  </p>
+                  <ul className="text-yellow-700 text-sm mt-2 space-y-1">
+                    <li>• Todos los objetivos creados</li>
+                    <li>• Historial completo de transacciones</li>
+                    <li>• Progreso de ahorros</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelReset}
+                  className="flex-1 group relative bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancelar</span>
+                  </div>
+                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+                </button>
+                <button
+                  onClick={confirmReset}
+                  className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Sí, Resetear Todo</span>
+                  </div>
+                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {welcomeScreenModal}
+      </>
     );
   }
 
@@ -166,13 +346,13 @@ function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">${totalIncome.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-green-600">${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="text-sm text-gray-600">Ingresos</div>
                       </div>
                     </div>
                     <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-red-600">${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="text-sm text-gray-600">Gastos</div>
                       </div>
                     </div>
@@ -186,6 +366,7 @@ function App() {
                     <TransactionList 
                       transactions={transactions}
                       onUpdateTransaction={updateTransaction}
+                      onDeleteTransaction={deleteTransaction}
                     />
                   </div>
                 </div>
@@ -223,6 +404,111 @@ function App() {
           />
         </div>
       </div>
+
+      {/* Modal de confirmación de reseteo */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
+            <div className="mb-6">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                ¿Estás seguro?
+              </h2>
+              <p className="text-lg text-gray-700 mb-4">
+                Gestión de Datos
+              </p>
+              <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
+                <p className="text-red-800 font-bold text-lg mb-2">
+                  Esta acción eliminará todas las transacciones y reseteará el objetivo.
+                </p>
+                <p className="text-red-700 text-sm">
+                  Esta acción no se puede deshacer.
+                </p>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+                <p className="text-yellow-800 text-sm font-medium">
+                  ⚠️ Se perderán todos los datos guardados incluyendo:
+                </p>
+                <ul className="text-yellow-700 text-sm mt-2 space-y-1">
+                  <li>• Todos los objetivos creados</li>
+                  <li>• Historial completo de transacciones</li>
+                  <li>• Progreso de ahorros</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelReset}
+                className="flex-1 group relative bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span>Cancelar</span>
+                </div>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+              </button>
+              <button
+                onClick={confirmReset}
+                className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Sí, Resetear Todo</span>
+                </div>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Welcome Screen Test */}
+      {showWelcomeScreen && (
+        <div 
+          id="welcome-test-screen"
+          className="fixed inset-0 bg-red-500 z-50 flex items-center justify-center"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            zIndex: 99999,
+            backgroundColor: 'red',
+            display: 'flex'
+          }}
+          onClick={() => console.log('Clicked on welcome screen overlay')}
+        >
+          <div 
+            className="bg-white p-8 rounded shadow-lg"
+            style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Clicked on welcome screen content');
+            }}
+          >
+            <h1 className="text-xl font-bold mb-4" style={{ fontSize: '24px', fontWeight: 'bold' }}>
+              TEST WELCOME SCREEN
+            </h1>
+            <p className="mb-4" style={{ marginBottom: '16px' }}>
+              If you see this, the state is working!
+            </p>
+            <button 
+              onClick={handleWelcomeComplete}
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+              style={{ backgroundColor: 'blue', color: 'white', padding: '8px 16px', borderRadius: '4px' }}
+            >
+              Close Test
+            </button>
+          </div>
+        </div>
+      )}
+      {welcomeScreenModal}
     </div>
   );
 }

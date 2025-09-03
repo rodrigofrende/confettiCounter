@@ -139,8 +139,8 @@ export const GoalForm: React.FC<GoalFormProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-3">
           Color del Objetivo
         </label>
-        <div className="flex space-x-3 justify-center">
-          {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((colorOption) => (
+        <div className="flex space-x-3 justify-center flex-wrap gap-2">
+          {['#3B82F6', '#10B981', '#8B4513', '#EF4444', '#8B5CF6', '#EC4899', '#374151', '#FBBF24', '#06B6D4'].map((colorOption) => (
             <button
               key={colorOption}
               type="button"
@@ -157,17 +157,29 @@ export const GoalForm: React.FC<GoalFormProps> = ({
       <div className={`${showCancelButton ? 'flex space-x-3' : ''}`}>
         <button
           type="submit"
-          className={`${showCancelButton ? 'flex-1' : 'w-full'} bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-lg`}
+          className={`group relative ${showCancelButton ? 'flex-1' : 'w-full'} bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer`}
         >
-          {buttonText}
+          <div className="flex items-center justify-center space-x-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Crear Objetivo</span>
+          </div>
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
         </button>
         {showCancelButton && onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-lg"
+            className="group relative flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
           >
-            Cancelar
+            <div className="flex items-center justify-center space-x-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Cancelar</span>
+            </div>
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
           </button>
         )}
       </div>

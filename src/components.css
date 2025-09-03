@@ -14,6 +14,105 @@
   animation: fade-in 0.4s ease-out forwards;
 }
 
+/* Welcome Screen Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Welcome Screen Specific Animations */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Advanced Welcome Screen Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out;
+}
+
 /* Animación fluida para nuevos objetivos */
 @keyframes slide-in-smooth {
   0% {
@@ -251,4 +350,64 @@ input[type="date"]:focus {
     0 10px 20px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(255, 255, 255, 0.5);
   transform: rotate(2deg) scale(1.02);
+}
+
+/* Progress bar shimmer animation */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Progress bar pulse effect - usando will-change para mejor rendimiento */
+@keyframes progress-pulse {
+  0% {
+    transform: scaleY(1) scaleX(1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scaleY(1.15) scaleX(1.02);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4), 0 2px 8px rgba(59, 130, 246, 0.3);
+    filter: brightness(1.1);
+  }
+  100% {
+    transform: scaleY(1) scaleX(1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    filter: brightness(1);
+  }
+}
+
+/* Clase para elementos que animan progreso - aislados de DND */
+.progress-animating {
+  will-change: transform, box-shadow, filter;
+  isolation: isolate;
+}
+
+/* Enhanced amount text animation */
+@keyframes amount-highlight {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.1);
+    filter: brightness(1.1);
+  }
+  60% {
+    transform: scale(1.25);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
 }

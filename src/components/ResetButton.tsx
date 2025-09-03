@@ -1,59 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface ResetButtonProps {
   onReset: () => void;
 }
 
 export const ResetButton: React.FC<ResetButtonProps> = ({ onReset }) => {
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const handleReset = () => {
-    onReset();
-    setShowConfirm(false);
-  };
-
   return (
-    <div className="card mb-6">
-      <div className="text-center">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          Gestión de Datos
-        </h3>
-        
-        {!showConfirm ? (
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
-          >
-            🔄 Resetear Todo
-          </button>
-        ) : (
-          <div className="space-y-4 animate-scale-in">
-            <div className="text-red-600 font-semibold">
-              ⚠️ ¿Estás seguro?
-            </div>
-            <p className="text-gray-600">
-              Esta acción eliminará todas las transacciones y reseteará el objetivo.
-              <br />
-              <strong>Esta acción no se puede deshacer.</strong>
-            </p>
-            
-            <div className="flex space-x-3 justify-center">
-              <button
-                onClick={handleReset}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
-              >
-                Sí, Resetear Todo
-              </button>
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
+    <button
+      onClick={onReset}
+      className="group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+    >
+      <div className="flex items-center justify-center space-x-2">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>Resetear Todo</span>
       </div>
-    </div>
+      <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+    </button>
   );
 };
