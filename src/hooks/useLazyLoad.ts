@@ -12,7 +12,7 @@ interface LazyLoadResult<T> {
   hasMore: boolean;
   isLoading: boolean;
   loadMore: () => void;
-  observerRef: React.RefObject<HTMLDivElement>;
+  observerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function useLazyLoad<T>({

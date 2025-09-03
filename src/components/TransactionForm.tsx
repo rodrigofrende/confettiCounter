@@ -34,7 +34,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransacti
     <div className="card mb-6 animate-slide-in">
       <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-3">
         <span className="text-2xl">💳</span>
-        Agregar Transacción
+        Registrar Transacción
       </h3>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,7 +97,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransacti
           ) : (
             <>
               <span>✨</span>
-              Agregar Transacción
+              Registrar Transacción
             </>
           )}
         </button>

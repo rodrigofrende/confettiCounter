@@ -124,19 +124,28 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             // Modo edición
             <div className="p-6 space-y-6">
               <div className="flex items-center space-x-3 mb-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  transaction.type === 'income' 
-                    ? 'bg-green-100 text-green-600' 
-                    : 'bg-red-100 text-red-600'
-                }`}>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {transaction.type === 'income' ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                    )}
-                  </svg>
-                </div>
+                {transaction.goalEmoji && transaction.goalColor ? (
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-md"
+                    style={{ backgroundColor: transaction.goalColor }}
+                  >
+                    {transaction.goalEmoji}
+                  </div>
+                ) : (
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    transaction.type === 'income' 
+                      ? 'bg-green-100 text-green-600' 
+                      : 'bg-red-100 text-red-600'
+                  }`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {transaction.type === 'income' ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                      )}
+                    </svg>
+                  </div>
+                )}
                 <div className="text-sm text-gray-500 font-medium">
                   Editando transacción
                 </div>
@@ -153,10 +162,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     onChange={(e) => setEditForm(prev => ({...prev, description: e.target.value}))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-lg font-medium"
                     placeholder="Descripción de la transacción"
-                    maxLength={100}
+                    maxLength={50}
                   />
                   <div className="text-xs text-gray-500 mt-1">
-                    {editForm.description.length}/100 caracteres
+                    {editForm.description.length}/50 caracteres
                   </div>
                 </div>
                 
@@ -207,19 +216,28 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <div className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4 flex-1">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    transaction.type === 'income' 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-red-100 text-red-600'
-                  }`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {transaction.type === 'income' ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                      )}
-                    </svg>
-                  </div>
+                  {transaction.goalEmoji && transaction.goalColor ? (
+                    <div 
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md"
+                      style={{ backgroundColor: transaction.goalColor }}
+                    >
+                      {transaction.goalEmoji}
+                    </div>
+                  ) : (
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      transaction.type === 'income' 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {transaction.type === 'income' ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        )}
+                      </svg>
+                    </div>
+                  )}
                   
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-900 text-lg truncate">
@@ -300,19 +318,28 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               </p>
               <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
                 <div className="flex items-center justify-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    transactionToDelete.type === 'income' 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-red-100 text-red-600'
-                  }`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {transactionToDelete.type === 'income' ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                      )}
-                    </svg>
-                  </div>
+                  {transactionToDelete.goalEmoji && transactionToDelete.goalColor ? (
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-md"
+                      style={{ backgroundColor: transactionToDelete.goalColor }}
+                    >
+                      {transactionToDelete.goalEmoji}
+                    </div>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      transactionToDelete.type === 'income' 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {transactionToDelete.type === 'income' ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        )}
+                      </svg>
+                    </div>
+                  )}
                   <h3 className="text-xl font-bold text-red-800">
                     {transactionToDelete.description}
                   </h3>

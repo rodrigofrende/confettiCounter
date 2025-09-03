@@ -29,7 +29,7 @@ interface GoalProgressProps {
   onUpdateGoal: (id: string, updates: Partial<Goal>) => void;
   onDeleteGoal: (id: string) => void;
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
-  onAddTransaction?: (amount: number, description: string, type: 'income' | 'expense') => void;
+  onAddTransaction?: (amount: number, description: string, type: 'income' | 'expense', goalInfo?: { goalId: string, goalEmoji: string, goalColor: string }) => void;
   onReorderGoals: (startIndex: number, endIndex: number) => void;
 }
 
@@ -146,7 +146,11 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
     if (onAddTransaction) {
       const transactionType = isAddition ? 'income' : 'expense';
       const actionText = isAddition ? 'Agregado a' : 'Quitado de';
-      onAddTransaction(amount, `${description} (${actionText} objetivo: ${selectedGoal.name})`, transactionType);
+      onAddTransaction(amount, `${description} (${actionText} objetivo: ${selectedGoal.name})`, transactionType, {
+        goalId: selectedGoal.id,
+        goalEmoji: selectedGoal.emoji,
+        goalColor: selectedGoal.color
+      });
     }
     
     // Remover animación después de que termine (extendido para las animaciones más lentas)
@@ -187,7 +191,11 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -239,7 +247,7 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
             ? `0 0 0 2px ${goal.color}40, 0 8px 25px rgba(0,0,0,0.15)` 
             : undefined
         }}
-        className={`goal-item group bg-white rounded-xl p-3 sm:p-4 shadow-md border border-gray-100 hover:shadow-lg ${
+        className={`goal-item group bg-white rounded-xl p-3 sm:p-4 lg:p-3 shadow-md border border-gray-100 hover:shadow-lg ${
           !isDragging ? 'transition-all duration-300' : ''
         } ${isNewlyAdded ? 'animate-new-goal' : ''} ${
           isDragging ? 'shadow-2xl scale-105 z-50' : ''
@@ -247,166 +255,280 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
         {...attributes}
         data-goal-id={goal.id}
       >
-        {/* Header - Unified responsive layout */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2 sm:gap-3 flex-1">
+        {/* Layout responsive: vertical en mobile, horizontal en desktop */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-6">
+          {/* Left section: Goal info */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <div 
-              className="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-all duration-200" 
+              className="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 touch-manipulation select-none" 
               title="Arrastra para reordenar"
               {...listeners}
+              style={{ touchAction: 'none' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
               </svg>
             </div>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center" style={{backgroundColor: `${goal.color}20`, color: goal.color}}>
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 text-lg sm:text-xl" style={{backgroundColor: `${goal.color}20`}}>
+              {goal.emoji || '🎯'}
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-bold text-gray-900 text-base sm:text-lg leading-tight truncate">
                 {goal.name}
               </h4>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs sm:text-sm text-gray-500">Meta: ${goal.targetAmount.toLocaleString()}</span>
-                {isGoalReached && (
+              {isGoalReached && (
+                <div className="mt-0.5">
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     ✓ Completado
                   </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Center section: Progress info - hidden on mobile, shown on desktop */}
+          <div className="hidden lg:flex lg:items-center lg:gap-8 flex-1">
+            <div className="text-center min-w-0 flex-shrink-0">
+              <div 
+                className={`text-xl font-bold transition-all duration-500 ease-out ${
+                  isAnimating ? 'progress-animating' : ''
+                }`} 
+                style={{
+                  color: goal.color,
+                  ...(isAnimating && {
+                    textShadow: `0 0 25px ${goal.color}60, 0 0 10px ${goal.color}40, 0 0 5px ${goal.color}20`,
+                    filter: 'brightness(1.3) saturate(1.2)',
+                    animation: 'amount-highlight 1.8s ease-out',
+                    transform: 'scale(1.15)',
+                    willChange: 'transform, filter'
+                  }),
+                  ...(!isAnimating && {
+                    textShadow: 'none',
+                    filter: 'brightness(1)',
+                    transform: 'scale(1)'
+                  })
+                }}
+                key={`amount-text-${goal.id}`}
+              >
+                ${goal.currentAmount.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-500">
+                Meta: ${goal.targetAmount.toLocaleString()}
+              </div>
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                <span>Progreso</span>
+                <span className="font-bold">{progress.toFixed(1)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden relative">
+                <div 
+                  className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
+                    isGoalReached 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                      : 'bg-gradient-to-r'
+                  } ${isAnimating ? 'progress-animating' : ''}`}
+                  style={{ 
+                    width: `${progress}%`,
+                    background: isGoalReached 
+                      ? 'linear-gradient(90deg, #10b981, #059669)'
+                      : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`,
+                    transitionDuration: isAnimating ? '2200ms' : '800ms',
+                    transitionTimingFunction: isAnimating 
+                      ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' 
+                      : 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    ...(isAnimating && {
+                      transform: 'scaleY(1.2) scaleX(1.01)',
+                      transformOrigin: 'left center',
+                      boxShadow: `0 0 15px ${goal.color}60, 0 2px 8px ${goal.color}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
+                    }),
+                    ...(!isAnimating && {
+                      transform: 'scaleY(1) scaleX(1)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    }),
+                    position: 'relative',
+                    zIndex: 1,
+                    willChange: isAnimating ? 'transform, box-shadow, width' : 'width'
+                  }}
+                  key={`progress-bar-${goal.id}`}
+                >
+                  {isAnimating && (
+                    <div 
+                      className="absolute inset-0 rounded-full opacity-60"
+                      style={{
+                        background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)`,
+                        animation: 'shimmer 1.8s ease-in-out infinite',
+                        willChange: 'transform, opacity'
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Additional info section */}
+            <div className="text-center min-w-0 flex-shrink-0">
+              <div className="text-sm font-medium text-gray-700 mb-1">
+                {!isGoalReached ? 'Faltan' : 'Completado'}
+              </div>
+              <div className={`text-lg font-bold ${isGoalReached ? 'text-green-600' : ''}`} style={{color: isGoalReached ? undefined : goal.color}}>
+                {isGoalReached ? '🎉' : `$${(goal.targetAmount - goal.currentAmount).toLocaleString()}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Right section: Actions */}
+          <div className="flex items-center justify-between lg:justify-end gap-2">
+            {/* Date info - shown on mobile, hidden on desktop */}
+            <div className="flex items-center gap-1.5 lg:hidden">
+              <span className="text-gray-500">📅</span>
+              <span className="text-xs font-medium text-gray-700">{goal.deadline.toLocaleDateString('es-ES')}</span>
+              {!isGoalReached && (
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                  isExpired 
+                    ? 'bg-red-100 text-red-800' 
+                    : isToday 
+                    ? 'bg-orange-100 text-orange-800' 
+                    : isUrgent 
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {isExpired ? '⚠️ Vencido' : isToday ? 'Hoy' : isUrgent ? `⚠️ ${daysLeft}d` : `✓ ${daysLeft}d`}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddMoneyClick(goal);
+                }}
+                className="group relative bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:transform-none pointer-events-auto"
+                disabled={isGoalReached}
+                title="Gestionar dinero"
+              >
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm sm:text-base">💰</span>
+                  <span className="hidden sm:inline text-xs font-semibold">Ahorrar</span>
+                </div>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(goal);
+                }}
+                className="group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl pointer-events-auto"
+                title="Eliminar objetivo"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile progress section - shown only on mobile */}
+        <div className="lg:hidden">
+          <div className="text-center mb-4">
+            <div 
+              className={`text-xl sm:text-2xl font-bold mb-1 transition-all duration-500 ease-out ${
+                isAnimating ? 'progress-animating' : ''
+              }`} 
+              style={{
+                color: goal.color,
+                ...(isAnimating && {
+                  textShadow: `0 0 25px ${goal.color}60, 0 0 10px ${goal.color}40, 0 0 5px ${goal.color}20`,
+                  filter: 'brightness(1.3) saturate(1.2)',
+                  animation: 'amount-highlight 1.8s ease-out',
+                  transform: 'scale(1.15)',
+                  willChange: 'transform, filter'
+                }),
+                ...(!isAnimating && {
+                  textShadow: 'none',
+                  filter: 'brightness(1)',
+                  transform: 'scale(1)'
+                })
+              }}
+              key={`amount-text-${goal.id}`}
+            >
+              ${goal.currentAmount.toLocaleString()}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">
+              de ${goal.targetAmount.toLocaleString()}
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="flex justify-between text-xs sm:text-sm font-medium text-gray-700 mb-2">
+              <span>Progreso</span>
+              <span className="font-bold">{progress.toFixed(1)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden relative">
+              <div 
+                className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
+                  isGoalReached 
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                    : 'bg-gradient-to-r'
+                } ${isAnimating ? 'progress-animating' : ''}`}
+                style={{ 
+                  width: `${progress}%`,
+                  background: isGoalReached 
+                    ? 'linear-gradient(90deg, #10b981, #059669)'
+                    : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`,
+                  transitionDuration: isAnimating ? '2200ms' : '800ms',
+                  transitionTimingFunction: isAnimating 
+                    ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' 
+                    : 'cubic-bezier(0.4, 0, 0.2, 1)',
+                  ...(isAnimating && {
+                    transform: 'scaleY(1.2) scaleX(1.01)',
+                    transformOrigin: 'left center',
+                    boxShadow: `0 0 15px ${goal.color}60, 0 2px 8px ${goal.color}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
+                  }),
+                  ...(!isAnimating && {
+                    transform: 'scaleY(1) scaleX(1)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  }),
+                  position: 'relative',
+                  zIndex: 1,
+                  willChange: isAnimating ? 'transform, box-shadow, width' : 'width'
+                }}
+                key={`progress-bar-${goal.id}`}
+              >
+                {isAnimating && (
+                  <div 
+                    className="absolute inset-0 rounded-full opacity-60"
+                    style={{
+                      background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)`,
+                      animation: 'shimmer 1.8s ease-in-out infinite',
+                      willChange: 'transform, opacity'
+                    }}
+                  />
                 )}
               </div>
             </div>
           </div>
-          <div className="flex space-x-1.5 ml-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddMoneyClick(goal);
-              }}
-              className="group relative bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:transform-none pointer-events-auto"
-              disabled={isGoalReached}
-              title="Gestionar dinero"
-            >
-              <div className="flex items-center space-x-1">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span className="hidden sm:inline text-xs font-semibold">Agregar</span>
-              </div>
-              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick(goal);
-              }}
-              className="group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium p-1.5 sm:p-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl pointer-events-auto"
-              title="Eliminar objetivo"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
-            </button>
-          </div>
         </div>
 
-        <div className="text-center mb-4">
-          <div 
-            className={`text-xl sm:text-2xl font-bold mb-1 transition-all duration-500 ease-out ${
-              isAnimating ? 'progress-animating' : ''
-            }`} 
-            style={{
-              color: goal.color,
-              ...(isAnimating && {
-                textShadow: `0 0 25px ${goal.color}60, 0 0 10px ${goal.color}40, 0 0 5px ${goal.color}20`,
-                filter: 'brightness(1.3) saturate(1.2)',
-                animation: 'amount-highlight 1.8s ease-out',
-                transform: 'scale(1.15)',
-                willChange: 'transform, filter'
-              }),
-              ...(!isAnimating && {
-                textShadow: 'none',
-                filter: 'brightness(1)',
-                transform: 'scale(1)'
-              })
-            }}
-            key={`amount-text-${goal.id}`}
-          >
-            ${goal.currentAmount.toLocaleString()}
-          </div>
-          <div className="text-xs sm:text-sm text-gray-500">
-            de ${goal.targetAmount.toLocaleString()}
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <div className="flex justify-between text-xs sm:text-sm font-medium text-gray-700 mb-2">
-            <span>Progreso</span>
-            <span className="font-bold">{progress.toFixed(1)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden relative">
-            <div 
-              className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
-                isGoalReached 
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                  : 'bg-gradient-to-r'
-              } ${isAnimating ? 'progress-animating' : ''}`}
-              style={{ 
-                width: `${progress}%`,
-                background: isGoalReached 
-                  ? 'linear-gradient(90deg, #10b981, #059669)'
-                  : `linear-gradient(90deg, ${goal.color}, ${goal.color}dd)`,
-                transitionDuration: isAnimating ? '2200ms' : '800ms',
-                transitionTimingFunction: isAnimating 
-                  ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' 
-                  : 'cubic-bezier(0.4, 0, 0.2, 1)',
-                ...(isAnimating && {
-                  transform: 'scaleY(1.2) scaleX(1.01)',
-                  transformOrigin: 'left center',
-                  boxShadow: `0 0 15px ${goal.color}60, 0 2px 8px ${goal.color}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                }),
-                ...(!isAnimating && {
-                  transform: 'scaleY(1) scaleX(1)',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }),
-                position: 'relative',
-                zIndex: 1,
-                willChange: isAnimating ? 'transform, box-shadow, width' : 'width'
-              }}
-              key={`progress-bar-${goal.id}`}
-            >
-              {/* Efecto de brillo animado - solo cuando está animando */}
-              {isAnimating && (
-                <div 
-                  className="absolute inset-0 rounded-full opacity-60"
-                  style={{
-                    background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)`,
-                    animation: 'shimmer 1.8s ease-in-out infinite',
-                    willChange: 'transform, opacity'
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Info Section - Unified responsive layout */}
-        <div className="flex items-center justify-between text-xs sm:text-sm">
-          <div className="flex items-center gap-1.5">
+        {/* Desktop date info - shown only on desktop */}
+        <div className="hidden lg:flex lg:items-center lg:justify-between text-sm mt-2">
+          <div className="flex items-center gap-2">
             <span className="text-gray-500">📅</span>
             <span className="font-medium text-gray-700">{goal.deadline.toLocaleDateString('es-ES')}</span>
           </div>
           {!isGoalReached && (
-            <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
+            <span className={`font-semibold px-3 py-1.5 rounded-full text-sm ${
               isExpired 
                 ? 'bg-red-100 text-red-700' 
                 : isToday 
                 ? 'bg-orange-100 text-orange-700'
                 : isUrgent 
                 ? 'bg-yellow-100 text-yellow-700' 
-                : 'bg-blue-100 text-blue-700'
+                : 'bg-green-100 text-green-700'
             }`}>
               {isExpired 
                 ? '❌ Vencido' 
@@ -421,7 +543,7 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
         </div>
 
         {!isGoalReached && remaining > 0 && (
-          <div className="mt-3 p-2.5 rounded-lg" style={{backgroundColor: `${goal.color}10`}}>
+          <div className="lg:hidden mt-3 p-2.5 rounded-lg" style={{backgroundColor: `${goal.color}10`}}>
             <div className="text-center text-xs sm:text-sm text-gray-700">
               Te faltan <span className="font-bold" style={{color: goal.color}}>${remaining.toLocaleString()}</span> para alcanzar tu objetivo
             </div>

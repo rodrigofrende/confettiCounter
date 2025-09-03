@@ -16,9 +16,9 @@ function App() {
 
   // Load data from localStorage on component mount
   useEffect(() => {
-    const savedTransactions = localStorage.getItem('money-counter-transactions');
-    const savedGoals = localStorage.getItem('money-counter-goals');
-    const hasVisitedBefore = localStorage.getItem('money-counter-visited');
+    const savedTransactions = localStorage.getItem('moneymetrics-transactions');
+    const savedGoals = localStorage.getItem('moneymetrics-goals');
+    const hasVisitedBefore = localStorage.getItem('moneymetrics-visited');
     
     console.log('Loading data from localStorage...');
     console.log('Saved transactions:', savedTransactions);
@@ -47,7 +47,8 @@ function App() {
         const parsedGoals = JSON.parse(savedGoals).map((g: any) => ({
           ...g,
           deadline: new Date(g.deadline),
-          order: g.order !== undefined ? g.order : 0
+          order: g.order !== undefined ? g.order : 0,
+          emoji: g.emoji || '🎯'
         }));
         // Ordenar por el campo order
         parsedGoals.sort((a: Goal, b: Goal) => a.order - b.order);
@@ -64,7 +65,7 @@ function App() {
     // Solo guardar si hay transacciones o si no es la carga inicial
     if (transactions.length > 0) {
       console.log('Saving transactions to localStorage:', transactions);
-      localStorage.setItem('money-counter-transactions', JSON.stringify(transactions));
+      localStorage.setItem('moneymetrics-transactions', JSON.stringify(transactions));
     }
   }, [transactions]);
 
@@ -72,7 +73,7 @@ function App() {
     // Solo guardar si hay objetivos o si no es la carga inicial
     if (goals.length > 0) {
       console.log('Saving goals to localStorage:', goals);
-      localStorage.setItem('money-counter-goals', JSON.stringify(goals));
+      localStorage.setItem('moneymetrics-goals', JSON.stringify(goals));
     }
   }, [goals]);
 
@@ -80,20 +81,25 @@ function App() {
 
   const handleWelcomeComplete = () => {
     setShowWelcomeScreen(false);
-    localStorage.setItem('money-counter-visited', 'true');
+    localStorage.setItem('moneymetrics-visited', 'true');
   };
 
   const showWelcomeTour = () => {
     setShowWelcomeScreen(true);
   };
 
-  const addTransaction = (amount: number, description: string, type: 'income' | 'expense') => {
+  const addTransaction = (amount: number, description: string, type: 'income' | 'expense', goalInfo?: { goalId: string, goalEmoji: string, goalColor: string }) => {
     const newTransaction: Transaction = {
       id: Date.now().toString(),
       amount,
       description,
       type,
-      date: new Date()
+      date: new Date(),
+      ...(goalInfo && {
+        goalId: goalInfo.goalId,
+        goalEmoji: goalInfo.goalEmoji,
+        goalColor: goalInfo.goalColor
+      })
     };
     
     setTransactions(prev => [newTransaction, ...prev]);
@@ -200,8 +206,8 @@ function App() {
   const confirmReset = () => {
     setTransactions([]);
     setGoals([]);
-    localStorage.removeItem('money-counter-transactions');
-    localStorage.removeItem('money-counter-goals');
+    localStorage.removeItem('moneymetrics-transactions');
+    localStorage.removeItem('moneymetrics-goals');
     setShowResetModal(false);
   };
 
@@ -233,7 +239,7 @@ function App() {
           <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-8">
             <div className="text-center mb-8">
               <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                💰 Money Counter
+                💰 MoneyMetrics
               </h1>
               <p className="text-gray-600 text-lg">
                 Gestiona tus finanzas con objetivos claros

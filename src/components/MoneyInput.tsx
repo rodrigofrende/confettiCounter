@@ -57,7 +57,7 @@ export const MoneyInput: React.FC<MoneyInputProps> = ({
   onChange,
   placeholder = "0.00",
   className = "",
-  min,
+  min: _min,
   max,
   required = false,
   disabled = false,
@@ -100,6 +100,16 @@ export const MoneyInput: React.FC<MoneyInputProps> = ({
 
     // Formatear el valor para mostrar
     const formatted = formatAsUserTypes(inputValue);
+    
+    // Validar máximo si está definido
+    const rawValue = getRawValue(formatted);
+    const numericValue = parseFloat(rawValue);
+    
+    if (max !== undefined && !isNaN(numericValue) && numericValue > max) {
+      // Si excede el máximo, no actualizar el valor
+      return;
+    }
+    
     setDisplayValue(formatted);
     
     // Calcular nueva posición del cursor
@@ -109,7 +119,6 @@ export const MoneyInput: React.FC<MoneyInputProps> = ({
     setCursorPosition(newCursorPos);
     
     // Enviar valor sin formato al componente padre
-    const rawValue = getRawValue(formatted);
     onChange(rawValue);
   };
 
@@ -144,7 +153,7 @@ export const MoneyInput: React.FC<MoneyInputProps> = ({
     e.preventDefault();
   };
 
-  const baseClassName = `w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-medium transition-all duration-300 ${className}`;
+  const baseClassName = `w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300 h-[52px] ${className}`;
 
   return (
     <div className="relative">

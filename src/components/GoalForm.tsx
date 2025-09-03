@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Goal } from '../types';
 import { MoneyInput } from './MoneyInput';
 
@@ -12,15 +12,34 @@ interface GoalFormProps {
 export const GoalForm: React.FC<GoalFormProps> = ({ 
   onAddGoal, 
   onCancel, 
-  buttonText = "🎯 Crear Mi Primer Objetivo",
   showCancelButton = false 
 }) => {
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [color, setColor] = useState('#3B82F6');
+  const [emoji, setEmoji] = useState('🎯');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const MAX_NAME_LENGTH = 50;
+
+  // Cerrar el selector de emojis al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +64,9 @@ export const GoalForm: React.FC<GoalFormProps> = ({
       targetAmount: numTarget,
       currentAmount: 0,
       deadline: selectedDate,
-      color
+      color,
+      emoji,
+      order: 0
     };
     
     onAddGoal(newGoal);
@@ -53,6 +74,7 @@ export const GoalForm: React.FC<GoalFormProps> = ({
     setTargetAmount('');
     setDeadline('');
     setColor('#3B82F6');
+    setEmoji('🎯');
     
     // Call onCancel to close the form if it's in modal mode
     if (onCancel) {
@@ -85,8 +107,8 @@ export const GoalForm: React.FC<GoalFormProps> = ({
               setName(e.target.value);
             }
           }}
-          placeholder="Ej: Vacaciones, Auto, Casa..."
-          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300 ${
+          placeholder="Ej: Vacaciones, Auto, Casa, Moto..."
+          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300 h-[52px] ${
             name.length >= MAX_NAME_LENGTH 
               ? 'border-red-300 bg-red-50' 
               : name.length > MAX_NAME_LENGTH * 0.8
@@ -98,12 +120,61 @@ export const GoalForm: React.FC<GoalFormProps> = ({
         />
         {name.length >= MAX_NAME_LENGTH && (
           <p className="text-xs text-red-600 mt-1">
-            Has alcanzado el límite máximo de caracteres
+            Llegaste al límite máximo de caracteres
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Layout responsive: vertical en mobile, horizontal en desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Emoji Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Icono del Objetivo
+          </label>
+          <div className="relative" ref={emojiPickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-xl hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white hover:bg-gray-50 text-lg h-[52px]"
+            >
+              <span className="text-2xl">{emoji}</span>
+              <div className="text-left flex-1">
+                <div className="text-sm font-medium text-gray-900">Elegir</div>
+                <div className="text-xs text-gray-500">emoji</div>
+              </div>
+              <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showEmojiPicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Emoji Picker Popover */}
+            {showEmojiPicker && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-4 min-w-[320px]">
+                <div className="grid grid-cols-6 gap-3">
+                  {['🎯', '💰', '🏆', '⭐', '💎', '🏠', '🚗', '✈️', '🎓', '💍', '📱', '💻', '🎮', '📷', '⌚', '🎵', '📚', '🎨', '🏖️', '🎪', '🍕', '👕', '🏃', '🌱'].map((emojiOption) => (
+                    <button
+                      key={emojiOption}
+                      type="button"
+                      onClick={() => {
+                        setEmoji(emojiOption);
+                        setShowEmojiPicker(false);
+                      }}
+                      className={`w-12 h-12 text-xl rounded-lg border transition-all duration-200 hover:scale-110 flex items-center justify-center ${
+                        emoji === emojiOption ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      title={emojiOption}
+                    >
+                      {emojiOption}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Meta de Ahorro */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Meta de Ahorro
@@ -114,10 +185,12 @@ export const GoalForm: React.FC<GoalFormProps> = ({
             placeholder="0.00"
             className=""
             min={0.01}
+            max={999999999}
             required
           />
         </div>
         
+        {/* Fecha Límite */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Fecha Límite
@@ -128,7 +201,7 @@ export const GoalForm: React.FC<GoalFormProps> = ({
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)} 
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300 h-[52px]"
               required
             />
           </div>
@@ -155,18 +228,6 @@ export const GoalForm: React.FC<GoalFormProps> = ({
       </div>
 
       <div className={`${showCancelButton ? 'flex space-x-3' : ''}`}>
-        <button
-          type="submit"
-          className={`group relative ${showCancelButton ? 'flex-1' : 'w-full'} bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer`}
-        >
-          <div className="flex items-center justify-center space-x-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Crear Objetivo</span>
-          </div>
-          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
-        </button>
         {showCancelButton && onCancel && (
           <button
             type="button"
@@ -182,6 +243,18 @@ export const GoalForm: React.FC<GoalFormProps> = ({
             <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
           </button>
         )}
+        <button
+          type="submit"
+          className={`group relative ${showCancelButton ? 'flex-1' : 'w-full'} bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer`}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Crear Objetivo</span>
+          </div>
+          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+        </button>
       </div>
     </form>
   );

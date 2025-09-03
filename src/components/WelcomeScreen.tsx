@@ -9,7 +9,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
 
   const steps = [
     {
-      title: "¡Bienvenido a Money Counter!",
+      title: "¡Bienvenido a MoneyMetrics!",
       subtitle: "La app que te ayuda a organizar tus gastos y llegar a tus metas",
       content: (
         <div className="w-full">

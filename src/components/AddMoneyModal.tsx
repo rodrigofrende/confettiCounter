@@ -95,7 +95,7 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
                 </svg>
               </div>
               <h2 className="text-xl font-bold text-gray-900">
-                {isAddition ? 'Agregar Dinero' : 'Quitar Dinero'}
+                {isAddition ? 'Ahorrar Dinero' : 'Quitar Dinero'}
               </h2>
             </div>
             <button
@@ -121,10 +121,8 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
                 }`}
               >
                 <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <span>Agregar</span>
+                  <span className="text-base">💰</span>
+                  <span>Ahorrar</span>
                 </div>
                 {isAddition && (
                   <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-lg transition-opacity duration-300"></div>
@@ -216,10 +214,10 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
                   isAddition ? 'focus:ring-green-500' : 'focus:ring-red-500'
                 }`}
                 required
-                maxLength={100}
+                maxLength={50}
               />
               <div className="text-xs text-gray-500 mt-1">
-                {description.length}/100 caracteres
+                {description.length}/50 caracteres
               </div>
             </div>
 
@@ -255,14 +253,10 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
                   </div>
                 ) : (
                   <div className="flex items-center justify-center space-x-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {isAddition ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                      )}
-                    </svg>
-                    <span>{isAddition ? 'Agregar Dinero' : 'Quitar Dinero'}</span>
+                    <span className="text-lg">
+                      {isAddition ? '💰' : '💸'}
+                    </span>
+                    <span>{isAddition ? 'Ahorrar Dinero' : 'Quitar Dinero'}</span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>

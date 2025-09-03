@@ -9,7 +9,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
 
   const steps = [
     {
-      title: "¡Bienvenido a Money Counter! 💰",
+      title: "¡Bienvenido a MoneyMetrics! 💰",
       subtitle: "Tu compañero inteligente para alcanzar tus sueños financieros",
       content: (
         <div className="text-center space-y-4">
@@ -47,7 +47,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
               <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/40 shadow-xl">
                 <h3 className="font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent mb-3 text-base flex items-center justify-center gap-2">
                   <span className="text-lg">✨</span>
-                  Lo que hace especial a Money Counter
+                  Lo que hace especial a MoneyMetrics
                 </h3>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -193,10 +193,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center shadow-lg">
-                    <span className="text-white text-sm font-bold">+</span>
+                    <span className="text-white text-sm font-bold">💰</span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-green-800 text-sm">💰 Agregar Dinero</h4>
+                    <h4 className="font-bold text-green-800 text-sm">💰 Ahorrar Dinero</h4>
                     <p className="text-xs text-green-600">Suma a tu objetivo</p>
                   </div>
                 </div>

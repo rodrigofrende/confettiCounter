@@ -4,6 +4,9 @@ export interface Transaction {
   description: string;
   type: 'income' | 'expense';
   date: Date;
+  goalId?: string;
+  goalEmoji?: string;
+  goalColor?: string;
 }
 
 export interface Goal {
@@ -13,5 +16,6 @@ export interface Goal {
   currentAmount: number;
   deadline: Date;
   color: string;
+  emoji: string;
   order: number;
 }
