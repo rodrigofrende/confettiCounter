@@ -154,21 +154,37 @@ function App() {
 
   const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id' | 'date'>>) => {
     setTransactions(prev => {
-      const updatedTransactions = prev.map(t => t.id === id ? { ...t, ...updates } : t);
-      
-      // Sincronizar objetivos si la transacción original o actualizada está relacionada con un objetivo
       const originalTransaction = prev.find(t => t.id === id);
+      const updatedTransactions = prev.map(t => t.id === id ? { ...t, ...updates } : t);
       const updatedTransaction = updatedTransactions.find(t => t.id === id);
       
+      // Sincronizar objetivos si la transacción está relacionada con un objetivo
       if (originalTransaction && updatedTransaction) {
-        // Usar goalId para identificar transacciones relacionadas con objetivos
         const originalWasRelated = !!originalTransaction.goalId;
         const updatedIsRelated = !!updatedTransaction.goalId;
         
         if (originalWasRelated || updatedIsRelated) {
-        setTimeout(() => {
-          syncGoalsWithTransactions(updatedTransactions);
-        }, 100);
+          // Actualizar objetivos inmediatamente
+          setGoals(currentGoals => {
+            return currentGoals.map(goal => {
+              // Buscar todas las transacciones relacionadas con este objetivo
+              const relatedTransactions = updatedTransactions.filter(t => t.goalId === goal.id);
+              
+              if (relatedTransactions.length > 0) {
+                // Calcular el nuevo monto basado en las transacciones relacionadas
+                const newAmount = relatedTransactions.reduce((sum, t) => {
+                  return sum + (t.type === 'income' ? t.amount : -t.amount);
+                }, 0);
+                
+                return {
+                  ...goal,
+                  currentAmount: Math.max(0, newAmount)
+                };
+              }
+              
+              return goal;
+            });
+          });
         }
       }
       
@@ -178,48 +194,38 @@ function App() {
 
   const deleteTransaction = (id: string) => {
     setTransactions(prev => {
+      const deletedTransaction = prev.find(t => t.id === id);
       const updatedTransactions = prev.filter(t => t.id !== id);
       
-      // Sincronizar objetivos solo si la transacción eliminada estaba relacionada con un objetivo
-      const deletedTransaction = prev.find(t => t.id === id);
+      // Sincronizar objetivos inmediatamente si la transacción eliminada estaba relacionada con un objetivo
       if (deletedTransaction && deletedTransaction.goalId) {
-        setTimeout(() => {
-          syncGoalsWithTransactions(updatedTransactions);
-        }, 100);
+        // Actualizar objetivos inmediatamente
+        setGoals(currentGoals => {
+          return currentGoals.map(goal => {
+            if (goal.id === deletedTransaction.goalId) {
+              // Buscar todas las transacciones restantes relacionadas con este objetivo
+              const remainingTransactions = updatedTransactions.filter(t => t.goalId === goal.id);
+              
+              // Calcular el nuevo monto basado en las transacciones restantes
+              const newAmount = remainingTransactions.reduce((sum, t) => {
+                return sum + (t.type === 'income' ? t.amount : -t.amount);
+              }, 0);
+              
+              return {
+                ...goal,
+                currentAmount: Math.max(0, newAmount)
+              };
+            }
+            return goal;
+          });
+        });
       }
       
       return updatedTransactions;
     });
   };
 
-  // Función para sincronizar objetivos con transacciones
-  const syncGoalsWithTransactions = (transactions: Transaction[]) => {
-    setGoals(prev => prev.map(goal => {
-      // Buscar todas las transacciones relacionadas con este objetivo usando goalId
-      const relatedTransactions = transactions.filter(t => t.goalId === goal.id);
-      
-      // Si no hay transacciones relacionadas, mantener el objetivo sin cambios
-      if (relatedTransactions.length === 0) {
-        return goal;
-      }
-      
-      // Calcular el monto total de las transacciones relacionadas
-      const totalFromTransactions = relatedTransactions.reduce((sum, t) => {
-        return sum + (t.type === 'income' ? t.amount : -t.amount);
-      }, 0);
-      
-      // Solo actualizar si el valor calculado es diferente al actual
-      const newAmount = Math.max(0, totalFromTransactions);
-      if (newAmount !== goal.currentAmount) {
-        return {
-          ...goal,
-          currentAmount: newAmount
-        };
-      }
-      
-      return goal;
-    }));
-  };
+
 
   // ============================================================================
   // GOAL MANAGEMENT

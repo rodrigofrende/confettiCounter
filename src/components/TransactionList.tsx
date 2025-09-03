@@ -55,8 +55,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   };
 
   const saveEdit = () => {
-    const amount = parseFloat(editForm.amount);
-    if (editingId && editForm.description.trim() && amount > 0) {
+    if (editingId && editForm.description.trim()) {
       // Encontrar la transacción que se está editando
       const transaction = transactions.find(t => t.id === editingId);
       if (!transaction) return;
@@ -65,33 +64,24 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       const relatedGoal = goals.find(goal => goal.id === transaction.goalId);
 
       if (relatedGoal) {
-        // Calcular el nuevo monto del objetivo después de la actualización
-        const otherTransactions = transactions.filter(t => 
-          t.id !== editingId && t.goalId === relatedGoal.id
-        );
+        // Para transacciones relacionadas con objetivos, solo permitir editar la descripción
+        const finalDescription = `${editForm.description.trim()} - ${relatedGoal.name}`;
         
-        const totalFromOtherTransactions = otherTransactions.reduce((sum, t) => {
-          return sum + (t.type === 'income' ? t.amount : -t.amount);
-        }, 0);
-        
-        const newGoalAmount = totalFromOtherTransactions + (transaction.type === 'income' ? amount : -amount);
-        
-        if (newGoalAmount < 0) {
-          alert(`No puedes restar tanto dinero. El objetivo "${relatedGoal.name}" quedaría con saldo negativo.`);
-          return;
+        onUpdateTransaction(editingId, {
+          description: finalDescription
+          // No actualizar el amount para transacciones relacionadas con objetivos
+        });
+      } else {
+        // Para transacciones no relacionadas con objetivos, permitir editar descripción y monto
+        const amount = parseFloat(editForm.amount);
+        if (amount > 0) {
+          onUpdateTransaction(editingId, {
+            description: editForm.description.trim(),
+            amount: amount
+          });
         }
       }
-
-      // Reconstruir la descripción completa si está relacionada con un objetivo
-      let finalDescription = editForm.description.trim();
-      if (relatedGoal) {
-        finalDescription = `${editForm.description.trim()} - ${relatedGoal.name}`;
-      }
-
-      onUpdateTransaction(editingId, {
-        description: finalDescription,
-        amount: amount
-      });
+      
       cancelEdit();
     }
   };
@@ -212,14 +202,35 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Monto
                   </label>
-                  <MoneyInput
-                    value={editForm.amount}
-                    onChange={(value) => setEditForm(prev => ({...prev, amount: value}))}
-                    placeholder="0.00"
-                    min={0.01}
-                    className="border-gray-300 focus:ring-blue-500"
-                    required
-                  />
+                  {(() => {
+                    const transaction = transactions.find(t => t.id === editingId);
+                    const relatedGoal = transaction ? goals.find(goal => goal.id === transaction.goalId) : null;
+                    const isRelatedToGoal = !!relatedGoal;
+                    
+                    return (
+                      <MoneyInput
+                        value={editForm.amount}
+                        onChange={(value) => setEditForm(prev => ({...prev, amount: value}))}
+                        placeholder="0.00"
+                        min={0.01}
+                        className={`border-gray-300 focus:ring-blue-500 ${isRelatedToGoal ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        required={!isRelatedToGoal}
+                        disabled={isRelatedToGoal}
+                      />
+                    );
+                  })()}
+                  {(() => {
+                    const transaction = transactions.find(t => t.id === editingId);
+                    const relatedGoal = transaction ? goals.find(goal => goal.id === transaction.goalId) : null;
+                    if (relatedGoal) {
+                      return (
+                        <div className="text-xs text-gray-500 mt-1">
+                          El monto no se puede editar para transacciones relacionadas con objetivos
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
               
@@ -466,3 +477,4 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     </div>
   );
 };
+
