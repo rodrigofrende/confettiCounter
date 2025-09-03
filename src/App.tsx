@@ -156,12 +156,19 @@ function App() {
     setTransactions(prev => {
       const updatedTransactions = prev.map(t => t.id === id ? { ...t, ...updates } : t);
       
-      // Sincronizar objetivos si se modificó una transacción relacionada (con delay para permitir animaciones)
-      const transaction = prev.find(t => t.id === id);
-      if (transaction && transaction.description.includes(' - ')) {
-        setTimeout(() => {
-          syncGoalsWithTransactions(updatedTransactions);
-        }, 100);
+      // Sincronizar objetivos solo si la transacción estaba relacionada con un objetivo
+      const originalTransaction = prev.find(t => t.id === id);
+      if (originalTransaction && originalTransaction.description.includes(' - ')) {
+        // Verificar si la transacción original estaba relacionada con algún objetivo
+        const wasRelatedToGoal = goals.some(goal => 
+          originalTransaction.description.includes(` - ${goal.name}`)
+        );
+        
+        if (wasRelatedToGoal) {
+          setTimeout(() => {
+            syncGoalsWithTransactions(updatedTransactions);
+          }, 100);
+        }
       }
       
       return updatedTransactions;
@@ -172,12 +179,19 @@ function App() {
     setTransactions(prev => {
       const updatedTransactions = prev.filter(t => t.id !== id);
       
-      // Sincronizar objetivos después de eliminar transacción (con delay para permitir animaciones)
+      // Sincronizar objetivos solo si la transacción eliminada estaba relacionada con un objetivo
       const deletedTransaction = prev.find(t => t.id === id);
       if (deletedTransaction && deletedTransaction.description.includes(' - ')) {
-        setTimeout(() => {
-          syncGoalsWithTransactions(updatedTransactions);
-        }, 100);
+        // Verificar si la transacción eliminada estaba relacionada con algún objetivo
+        const wasRelatedToGoal = goals.some(goal => 
+          deletedTransaction.description.includes(` - ${goal.name}`)
+        );
+        
+        if (wasRelatedToGoal) {
+          setTimeout(() => {
+            syncGoalsWithTransactions(updatedTransactions);
+          }, 100);
+        }
       }
       
       return updatedTransactions;

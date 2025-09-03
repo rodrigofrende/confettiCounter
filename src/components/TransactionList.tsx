@@ -247,10 +247,29 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-900 text-lg truncate">
                       {transaction.description.includes(' - ') ? (
-                        <>
-                          {transaction.description.split(' - ')[0]}
-                          <span className="text-gray-500 font-normal"> - {transaction.description.split(' - ')[1]}</span>
-                        </>
+                        (() => {
+                          const parts = transaction.description.split(' - ');
+                          // Si tiene 3 partes (descripción - algo - objetivo), mostrar descripción + objetivo
+                          if (parts.length === 3) {
+                            return (
+                              <>
+                                {parts[0]}
+                                <span className="text-gray-500 font-normal"> - {parts[2]}</span>
+                              </>
+                            );
+                          }
+                          // Si tiene 2 partes, mostrar ambas
+                          else if (parts.length === 2) {
+                            return (
+                              <>
+                                {parts[0]}
+                                <span className="text-gray-500 font-normal"> - {parts[1]}</span>
+                              </>
+                            );
+                          }
+                          // Fallback: mostrar descripción completa
+                          return transaction.description;
+                        })()
                       ) : (
                         transaction.description
                       )}
