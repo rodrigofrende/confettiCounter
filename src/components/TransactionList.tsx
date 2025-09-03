@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import type { Transaction } from '../types';
+import type { Transaction, Goal } from '../types';
 import { MoneyInput } from './MoneyInput';
 import { useLazyLoad } from '../hooks/useLazyLoad';
 import { TransactionItemSkeleton, LoadingSpinner } from './SkeletonLoader';
+import { handleAlphanumericInput } from '../utils/inputValidator';
 
 interface TransactionListProps {
   transactions: Transaction[];
   onUpdateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'date'>>) => void;
   onDeleteTransaction: (id: string) => void;
+  goals: Goal[];
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({ 
   transactions, 
   onUpdateTransaction,
-  onDeleteTransaction 
+  onDeleteTransaction,
+  goals
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ description: '', amount: '' });
@@ -54,8 +57,39 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const saveEdit = () => {
     const amount = parseFloat(editForm.amount);
     if (editingId && editForm.description.trim() && amount > 0) {
+      // Encontrar la transacción que se está editando
+      const transaction = transactions.find(t => t.id === editingId);
+      if (!transaction) return;
+
+      // Verificar si la transacción está relacionada con un objetivo
+      const relatedGoal = goals.find(goal => goal.id === transaction.goalId);
+
+      if (relatedGoal) {
+        // Calcular el nuevo monto del objetivo después de la actualización
+        const otherTransactions = transactions.filter(t => 
+          t.id !== editingId && t.goalId === relatedGoal.id
+        );
+        
+        const totalFromOtherTransactions = otherTransactions.reduce((sum, t) => {
+          return sum + (t.type === 'income' ? t.amount : -t.amount);
+        }, 0);
+        
+        const newGoalAmount = totalFromOtherTransactions + (transaction.type === 'income' ? amount : -amount);
+        
+        if (newGoalAmount < 0) {
+          alert(`No puedes restar tanto dinero. El objetivo "${relatedGoal.name}" quedaría con saldo negativo.`);
+          return;
+        }
+      }
+
+      // Reconstruir la descripción completa si está relacionada con un objetivo
+      let finalDescription = editForm.description.trim();
+      if (relatedGoal) {
+        finalDescription = `${editForm.description.trim()} - ${relatedGoal.name}`;
+      }
+
       onUpdateTransaction(editingId, {
-        description: editForm.description.trim(),
+        description: finalDescription,
         amount: amount
       });
       cancelEdit();
@@ -164,7 +198,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   <input
                     type="text"
                     value={editForm.description}
-                    onChange={(e) => setEditForm(prev => ({...prev, description: e.target.value}))}
+                    onChange={(e) => handleAlphanumericInput(e.target.value, (value) => setEditForm(prev => ({...prev, description: value})), 35)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-lg font-medium"
                     placeholder="Descripción de la transacción"
                     maxLength={35}
@@ -191,18 +225,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               
               <div className="flex space-x-3 pt-4">
                 <button
-                  onClick={saveEdit}
-                  className="group relative flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Guardar</span>
-                  </div>
-                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
-                </button>
-                <button
                   onClick={cancelEdit}
                   className="group relative flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
                 >
@@ -211,6 +233,18 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     <span>Cancelar</span>
+                  </div>
+                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+                </button>
+                <button
+                  onClick={saveEdit}
+                  className="group relative flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Guardar</span>
                   </div>
                   <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
                 </button>

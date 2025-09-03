@@ -163,16 +163,6 @@ export const Achievements: React.FC = () => {
            ¡Sigue gestionando tus finanzas para desbloquear logros!
          </p>
        </div>
-       
-       {/* Mensaje Misterioso */}
-       <div className="mt-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
-         <div className="flex items-center gap-2">
-           <span className="text-lg">🔮</span>
-           <p className="text-sm text-gray-600 font-medium">
-             ¿Qué secretos financieros descubrirás?
-           </p>
-         </div>
-       </div>
     </div>
   );
 };

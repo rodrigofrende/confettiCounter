@@ -53,7 +53,7 @@ function App() {
   // ============================================================================
   // EFFECTS & DATA PERSISTENCE
   // ============================================================================
-  
+
   // Load data from localStorage on component mount
   useEffect(() => {
     const savedTransactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
@@ -121,7 +121,7 @@ function App() {
   // ============================================================================
   // EVENT HANDLERS
   // ============================================================================
-  
+
   const handleWelcomeComplete = () => {
     setShowWelcomeScreen(false);
     localStorage.setItem(STORAGE_KEYS.VISITED, 'true');
@@ -134,7 +134,7 @@ function App() {
   // ============================================================================
   // TRANSACTION MANAGEMENT
   // ============================================================================
-  
+
   const addTransaction = (amount: number, description: string, type: 'income' | 'expense', goalInfo?: { goalId: string, goalEmoji: string, goalColor: string }) => {
     const newTransaction: Transaction = {
       id: Date.now().toString(),
@@ -156,18 +156,19 @@ function App() {
     setTransactions(prev => {
       const updatedTransactions = prev.map(t => t.id === id ? { ...t, ...updates } : t);
       
-      // Sincronizar objetivos solo si la transacción estaba relacionada con un objetivo
+      // Sincronizar objetivos si la transacción original o actualizada está relacionada con un objetivo
       const originalTransaction = prev.find(t => t.id === id);
-      if (originalTransaction && originalTransaction.description.includes(' - ')) {
-        // Verificar si la transacción original estaba relacionada con algún objetivo
-        const wasRelatedToGoal = goals.some(goal => 
-          originalTransaction.description.includes(` - ${goal.name}`)
-        );
+      const updatedTransaction = updatedTransactions.find(t => t.id === id);
+      
+      if (originalTransaction && updatedTransaction) {
+        // Usar goalId para identificar transacciones relacionadas con objetivos
+        const originalWasRelated = !!originalTransaction.goalId;
+        const updatedIsRelated = !!updatedTransaction.goalId;
         
-        if (wasRelatedToGoal) {
-          setTimeout(() => {
-            syncGoalsWithTransactions(updatedTransactions);
-          }, 100);
+        if (originalWasRelated || updatedIsRelated) {
+        setTimeout(() => {
+          syncGoalsWithTransactions(updatedTransactions);
+        }, 100);
         }
       }
       
@@ -181,17 +182,10 @@ function App() {
       
       // Sincronizar objetivos solo si la transacción eliminada estaba relacionada con un objetivo
       const deletedTransaction = prev.find(t => t.id === id);
-      if (deletedTransaction && deletedTransaction.description.includes(' - ')) {
-        // Verificar si la transacción eliminada estaba relacionada con algún objetivo
-        const wasRelatedToGoal = goals.some(goal => 
-          deletedTransaction.description.includes(` - ${goal.name}`)
-        );
-        
-        if (wasRelatedToGoal) {
-          setTimeout(() => {
-            syncGoalsWithTransactions(updatedTransactions);
-          }, 100);
-        }
+      if (deletedTransaction && deletedTransaction.goalId) {
+        setTimeout(() => {
+          syncGoalsWithTransactions(updatedTransactions);
+        }, 100);
       }
       
       return updatedTransactions;
@@ -201,10 +195,8 @@ function App() {
   // Función para sincronizar objetivos con transacciones
   const syncGoalsWithTransactions = (transactions: Transaction[]) => {
     setGoals(prev => prev.map(goal => {
-      // Buscar todas las transacciones relacionadas con este objetivo
-      const relatedTransactions = transactions.filter(t => 
-        t.description.includes(` - ${goal.name}`)
-      );
+      // Buscar todas las transacciones relacionadas con este objetivo usando goalId
+      const relatedTransactions = transactions.filter(t => t.goalId === goal.id);
       
       // Si no hay transacciones relacionadas, mantener el objetivo sin cambios
       if (relatedTransactions.length === 0) {
@@ -232,7 +224,7 @@ function App() {
   // ============================================================================
   // GOAL MANAGEMENT
   // ============================================================================
-  
+
   const addGoal = (goal: Omit<Goal, 'id'>) => {
     const newGoal: Goal = {
       ...goal,
@@ -267,7 +259,7 @@ function App() {
   // ============================================================================
   // RESET FUNCTIONALITY
   // ============================================================================
-  
+
   const resetAll = () => {
     setShowResetModal(true);
   };
@@ -287,7 +279,7 @@ function App() {
   // ============================================================================
   // COMPUTED VALUES
   // ============================================================================
-  
+
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -306,109 +298,109 @@ function App() {
   const welcomeScreenModal = showWelcomeScreen && (
     <WelcomeScreen onComplete={handleWelcomeComplete} />
   );
-
+  
   // Modal de confirmación de reseteo
   const renderResetModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
-        <div className="mb-6">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            ¿Estás seguro?
-          </h2>
-          <p className="text-lg text-gray-700 mb-4">
-            Gestión de Datos
-          </p>
-          <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
-            <p className="text-red-800 font-bold text-lg mb-2">
-              Esta acción eliminará todas las transacciones y reseteará el objetivo.
-            </p>
-            <p className="text-red-700 text-sm">
-              Esta acción no se puede deshacer.
-            </p>
-          </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
-            <p className="text-yellow-800 text-sm font-medium">
-              ⚠️ Se perderán todos los datos guardados incluyendo:
-            </p>
-            <ul className="text-yellow-700 text-sm mt-2 space-y-1">
-              <li>• Todos los objetivos creados</li>
-              <li>• Historial completo de transacciones</li>
-              <li>• Progreso de ahorros</li>
-            </ul>
-          </div>
-        </div>
-        
-        <div className="flex space-x-3">
-          <button
-            onClick={cancelReset}
-            className="flex-1 group relative bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Cancelar</span>
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative z-60 animate-modalIn">
+              <div className="mb-6">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  ¿Estás seguro?
+                </h2>
+                <p className="text-lg text-gray-700 mb-4">
+                  Gestión de Datos
+                </p>
+                <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 mb-4 border border-red-200">
+                  <p className="text-red-800 font-bold text-lg mb-2">
+                    Esta acción eliminará todas las transacciones y reseteará el objetivo.
+                  </p>
+                  <p className="text-red-700 text-sm">
+                    Esta acción no se puede deshacer.
+                  </p>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+                  <p className="text-yellow-800 text-sm font-medium">
+                    ⚠️ Se perderán todos los datos guardados incluyendo:
+                  </p>
+                  <ul className="text-yellow-700 text-sm mt-2 space-y-1">
+                    <li>• Todos los objetivos creados</li>
+                    <li>• Historial completo de transacciones</li>
+                    <li>• Progreso de ahorros</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelReset}
+                  className="flex-1 group relative bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancelar</span>
+                  </div>
+                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+                </button>
+                <button
+                  onClick={confirmReset}
+                  className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Sí, Resetear Todo</span>
+                  </div>
+                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
+                </button>
+              </div>
             </div>
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
-          </button>
-          <button
-            onClick={confirmReset}
-            className="flex-1 group relative bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span>Sí, Resetear Todo</span>
-            </div>
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
-          </button>
-        </div>
-      </div>
-    </div>
+          </div>
   );
 
   // Test Welcome Screen (para debugging)
   const renderTestWelcomeScreen = () => (
-    <div 
-      id="welcome-test-screen"
-      className="fixed inset-0 bg-red-500 z-50 flex items-center justify-center"
-      style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0, 
-        zIndex: 99999,
-        backgroundColor: 'red',
-        display: 'flex'
-      }}
-      onClick={() => console.log('Clicked on welcome screen overlay')}
-    >
-      <div 
-        className="bg-white p-8 rounded shadow-lg"
-        style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px' }}
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log('Clicked on welcome screen content');
-        }}
-      >
-        <h1 className="text-xl font-bold mb-4" style={{ fontSize: '24px', fontWeight: 'bold' }}>
-          TEST WELCOME SCREEN
-        </h1>
-        <p className="mb-4" style={{ marginBottom: '16px' }}>
-          If you see this, the state is working!
-        </p>
-        <button 
-          onClick={handleWelcomeComplete}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-          style={{ backgroundColor: 'blue', color: 'white', padding: '8px 16px', borderRadius: '4px' }}
+        <div 
+          id="welcome-test-screen"
+          className="fixed inset-0 bg-red-500 z-50 flex items-center justify-center"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            zIndex: 99999,
+            backgroundColor: 'red',
+            display: 'flex'
+          }}
+          onClick={() => console.log('Clicked on welcome screen overlay')}
         >
-          Close Test
-        </button>
-      </div>
-    </div>
+          <div 
+            className="bg-white p-8 rounded shadow-lg"
+            style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Clicked on welcome screen content');
+            }}
+          >
+            <h1 className="text-xl font-bold mb-4" style={{ fontSize: '24px', fontWeight: 'bold' }}>
+              TEST WELCOME SCREEN
+            </h1>
+            <p className="mb-4" style={{ marginBottom: '16px' }}>
+              If you see this, the state is working!
+            </p>
+            <button 
+              onClick={handleWelcomeComplete}
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+              style={{ backgroundColor: 'blue', color: 'white', padding: '8px 16px', borderRadius: '4px' }}
+            >
+              Close Test
+            </button>
+          </div>
+        </div>
   );
   
   // ============================================================================
@@ -504,6 +496,7 @@ function App() {
                         transactions={transactions}
                         onUpdateTransaction={updateTransaction}
                         onDeleteTransaction={deleteTransaction}
+                        goals={goals}
                       />
                     </div>
                   </div>

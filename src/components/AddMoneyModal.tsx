@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MoneyInput } from './MoneyInput';
+import { handleAlphanumericInput } from '../utils/inputValidator';
 
 interface AddMoneyModalProps {
   isOpen: boolean;
@@ -208,7 +209,7 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
                 type="text"
                 id="description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => handleAlphanumericInput(e.target.value, setDescription, 35)}
                 placeholder={isAddition ? "Ej: Ahorro mensual, bono extra, etc." : "Ej: Emergencia, gasto urgente, etc."}
                 className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:border-transparent ${
                   isAddition ? 'focus:ring-green-500' : 'focus:ring-red-500'

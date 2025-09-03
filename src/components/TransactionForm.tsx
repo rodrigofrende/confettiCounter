@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MoneyInput } from './MoneyInput';
+import { handleAlphanumericInput } from '../utils/inputValidator';
 
 interface TransactionFormProps {
   onAddTransaction: (amount: number, description: string, type: 'income' | 'expense') => void;
@@ -75,7 +76,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransacti
           <input
             type="text"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => handleAlphanumericInput(e.target.value, setDescription, 35)}
             placeholder="Descripción de la transacción"
             className="input-field"
             required

@@ -50,6 +50,7 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [newlyAddedGoals, setNewlyAddedGoals] = useState<Set<string>>(new Set());
   const [animatingGoals, setAnimatingGoals] = useState<Set<string>>(new Set());
+  const [isProcessingTransaction, setIsProcessingTransaction] = useState(false);
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight
@@ -128,7 +129,10 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
   };
 
   const handleAddMoney = (amount: number, description: string, isAddition: boolean) => {
-    if (!selectedGoal) return;
+    if (!selectedGoal || isProcessingTransaction) return;
+    
+    // Activar estado de loading
+    setIsProcessingTransaction(true);
     
     // Calculate new amount based on addition or subtraction
     const finalAmount = isAddition ? amount : -amount;
@@ -152,13 +156,14 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
       });
     }
     
-    // Remover animación después de que termine (extendido para las animaciones más lentas)
+    // Remover animación y loading después de que termine
     setTimeout(() => {
       setAnimatingGoals(prev => {
         const newSet = new Set(prev);
         newSet.delete(selectedGoal.id);
         return newSet;
       });
+      setIsProcessingTransaction(false);
     }, 2400);
     
     // Close modal and reset selected goal
@@ -405,12 +410,21 @@ export const GoalProgress: React.FC<GoalProgressProps> = ({
                   handleAddMoneyClick(goal);
                 }}
                 className="group relative bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-medium p-1.5 sm:px-3 sm:py-2 rounded-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:transform-none pointer-events-auto"
-                disabled={isGoalReached}
-                title="Gestionar dinero"
+                disabled={isGoalReached || isProcessingTransaction}
+                title={isProcessingTransaction ? "Procesando transacción..." : "Gestionar dinero"}
               >
                 <div className="flex items-center space-x-1">
-                  <span className="text-sm sm:text-base">💰</span>
-                  <span className="hidden sm:inline text-xs font-semibold">Ahorrar</span>
+                  {isProcessingTransaction ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span className="hidden sm:inline text-xs font-semibold">Procesando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm sm:text-base">💰</span>
+                      <span className="hidden sm:inline text-xs font-semibold">Ahorrar</span>
+                    </>
+                  )}
                 </div>
                 <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
               </button>

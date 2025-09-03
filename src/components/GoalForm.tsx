@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Goal } from '../types';
 import { MoneyInput } from './MoneyInput';
+import { handleAlphanumericInput } from '../utils/inputValidator';
 
 interface GoalFormProps {
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
@@ -103,9 +104,7 @@ export const GoalForm: React.FC<GoalFormProps> = ({
           type="text"
           value={name}
           onChange={(e) => {
-            if (e.target.value.length <= MAX_NAME_LENGTH) {
-              setName(e.target.value);
-            }
+            handleAlphanumericInput(e.target.value, setName, MAX_NAME_LENGTH);
           }}
           placeholder="Ej: Vacaciones, Auto, Casa, Moto..."
           className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg transition-all duration-300 h-[52px] ${
