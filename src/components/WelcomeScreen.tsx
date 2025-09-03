@@ -133,7 +133,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
                     {
                       step: 3,
                       title: 'Para cuándo',
-                      example: 'Diciembre 2024',
+                      example: `Diciembre ${new Date().getFullYear()}`,
                       tip: 'Te ayuda a organizarte',
                       color: 'from-purple-500 to-violet-500',
                       bgColor: 'from-purple-50 to-violet-50',
