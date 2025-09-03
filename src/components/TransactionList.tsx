@@ -35,8 +35,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   const startEdit = (transaction: Transaction) => {
     setEditingId(transaction.id);
+    // Extraer solo la descripción original (antes del guión)
+    const originalDescription = transaction.description.includes(' - ') 
+      ? transaction.description.split(' - ')[0] 
+      : transaction.description;
+    
     setEditForm({
-      description: transaction.description,
+      description: originalDescription,
       amount: Math.abs(transaction.amount).toString()
     });
   };
