@@ -7,6 +7,9 @@ import { GoalSettings } from './components/GoalSettings';
 import { ResetButton } from './components/ResetButton';
 import { Tabs } from './components/Tabs';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { Achievements } from './components/Achievements';
+import { AchievementPopup } from './components/AchievementPopup';
+import { useAchievements } from './hooks/useAchievements';
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -49,10 +52,56 @@ function App() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  // Achievement system
+  const {
+    achievements,
+    achievementProgress,
+    checkNewAchievements,
+    clearNewlyUnlocked,
+    resetAchievements
+  } = useAchievements();
+  
+  const [showAchievementPopup, setShowAchievementPopup] = useState(false);
+  const [currentAchievement, setCurrentAchievement] = useState<any>(null);
+  const [achievementQueue, setAchievementQueue] = useState<any[]>([]);
 
   // ============================================================================
   // EFFECTS & DATA PERSISTENCE
   // ============================================================================
+
+  // Check for new achievements when data changes
+  useEffect(() => {
+    if (transactions.length > 0 || goals.length > 0) {
+      const newAchievements = checkNewAchievements(transactions, goals);
+      if (newAchievements.length > 0) {
+        // Add all new achievements to the queue
+        setAchievementQueue(prev => [...prev, ...newAchievements]);
+      }
+    }
+  }, [transactions, goals, checkNewAchievements]);
+
+  // Process achievement queue
+  useEffect(() => {
+    if (achievementQueue.length > 0 && !showAchievementPopup) {
+      const nextAchievement = achievementQueue[0];
+      setCurrentAchievement(nextAchievement);
+      setShowAchievementPopup(true);
+    }
+  }, [achievementQueue, showAchievementPopup]);
+
+  // Handle achievement popup close
+  const handleAchievementPopupClose = () => {
+    setShowAchievementPopup(false);
+    setCurrentAchievement(null);
+    
+    // Remove the current achievement from queue and process next one
+    setAchievementQueue(prev => {
+      const newQueue = prev.slice(1);
+      return newQueue;
+    });
+    
+    clearNewlyUnlocked();
+  };
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -60,9 +109,6 @@ function App() {
     const savedGoals = localStorage.getItem(STORAGE_KEYS.GOALS);
     const hasVisitedBefore = localStorage.getItem(STORAGE_KEYS.VISITED);
     
-    console.log('Loading data from localStorage...');
-    console.log('Saved transactions:', savedTransactions);
-    console.log('Saved goals:', savedGoals);
     
     // Show welcome screen if it's the first visit
     if (!hasVisitedBefore) {
@@ -75,7 +121,6 @@ function App() {
           ...t,
           date: new Date(t.date)
         }));
-        console.log('Parsed transactions:', parsedTransactions);
         setTransactions(parsedTransactions);
       } catch (error) {
         console.error('Error parsing transactions:', error);
@@ -92,7 +137,6 @@ function App() {
         }));
         // Ordenar por el campo order
         parsedGoals.sort((a: Goal, b: Goal) => a.order - b.order);
-        console.log('Parsed goals:', parsedGoals);
         setGoals(parsedGoals);
       } catch (error) {
         console.error('Error parsing goals:', error);
@@ -103,7 +147,6 @@ function App() {
   // Save transactions to localStorage whenever they change
   useEffect(() => {
     if (transactions.length > 0) {
-      console.log('Saving transactions to localStorage:', transactions);
       localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
     }
   }, [transactions]);
@@ -111,7 +154,6 @@ function App() {
   // Save goals to localStorage whenever they change
   useEffect(() => {
     if (goals.length > 0) {
-      console.log('Saving goals to localStorage:', goals);
       localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
     }
   }, [goals]);
@@ -273,6 +315,10 @@ function App() {
   const confirmReset = () => {
     setTransactions([]);
     setGoals([]);
+    resetAchievements();
+    setAchievementQueue([]);
+    setShowAchievementPopup(false);
+    setCurrentAchievement(null);
     localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
     localStorage.removeItem(STORAGE_KEYS.GOALS);
     setShowResetModal(false);
@@ -382,14 +428,13 @@ function App() {
             backgroundColor: 'red',
             display: 'flex'
           }}
-          onClick={() => console.log('Clicked on welcome screen overlay')}
+          onClick={() => {}}
         >
           <div 
             className="bg-white p-8 rounded shadow-lg"
             style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px' }}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Clicked on welcome screen content');
             }}
           >
             <h1 className="text-xl font-bold mb-4" style={{ fontSize: '24px', fontWeight: 'bold' }}>
@@ -525,6 +570,13 @@ function App() {
                         balance={balance}
                       />
                     </div>
+                    
+                    {/* Sistema de Logros */}
+                    <Achievements 
+                      achievements={achievements}
+                      achievementProgress={achievementProgress}
+                    />
+                    
                     <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
                       <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
                         Configuración
@@ -545,6 +597,16 @@ function App() {
       {showResetModal && renderResetModal()}
       {showWelcomeScreen && renderTestWelcomeScreen()}
       {welcomeScreenModal}
+      
+      {/* Achievement Popup */}
+      {showAchievementPopup && currentAchievement && (
+        <AchievementPopup
+          achievement={currentAchievement}
+          onClose={handleAchievementPopupClose}
+          show={showAchievementPopup}
+          queueLength={achievementQueue.length - 1}
+        />
+      )}
     </div>
   );
 }
