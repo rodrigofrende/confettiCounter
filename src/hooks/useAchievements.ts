@@ -187,15 +187,19 @@ const ACHIEVEMENTS: Achievement[] = [
 ];
 
 const STORAGE_KEY = 'moneymetrics-achievements';
+const SHOWN_ACHIEVEMENTS_KEY = 'moneymetrics-shown-achievements';
 
 export const useAchievements = () => {
   const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
   const [achievementProgress, setAchievementProgress] = useState<AchievementProgress[]>([]);
   const [newlyUnlocked, setNewlyUnlocked] = useState<Achievement[]>([]);
+  const [shownAchievements, setShownAchievements] = useState<Set<string>>(new Set());
 
   // Load achievements from localStorage
   useEffect(() => {
     const savedAchievements = localStorage.getItem(STORAGE_KEY);
+    const savedShownAchievements = localStorage.getItem(SHOWN_ACHIEVEMENTS_KEY);
+    
     if (savedAchievements) {
       try {
         const parsedAchievements = JSON.parse(savedAchievements);
@@ -203,6 +207,16 @@ export const useAchievements = () => {
       } catch (error) {
         console.error('Error parsing achievements:', error);
         setAchievements(ACHIEVEMENTS);
+      }
+    }
+    
+    if (savedShownAchievements) {
+      try {
+        const parsedShownAchievements = JSON.parse(savedShownAchievements);
+        setShownAchievements(new Set(parsedShownAchievements));
+      } catch (error) {
+        console.error('Error parsing shown achievements:', error);
+        setShownAchievements(new Set());
       }
     }
   }, []);
@@ -213,6 +227,13 @@ export const useAchievements = () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(achievements));
     }
   }, [achievements]);
+
+  // Save shown achievements to localStorage
+  useEffect(() => {
+    if (shownAchievements.size > 0) {
+      localStorage.setItem(SHOWN_ACHIEVEMENTS_KEY, JSON.stringify(Array.from(shownAchievements)));
+    }
+  }, [shownAchievements]);
 
   // Calculate achievement progress
   const calculateProgress = useCallback((transactions: Transaction[], goals: Goal[]) => {
@@ -299,22 +320,35 @@ export const useAchievements = () => {
             prev.map(a => a.id === achievement.id ? updatedAchievement : a)
           );
           
-          newlyUnlockedAchievements.push(updatedAchievement);
+          // Only add to newly unlocked if it hasn't been shown before
+          if (!shownAchievements.has(achievement.id)) {
+            newlyUnlockedAchievements.push(updatedAchievement);
+          }
         }
       }
     });
     
+    // Only add to newlyUnlocked if there are actually new achievements
     if (newlyUnlockedAchievements.length > 0) {
       setNewlyUnlocked(prev => [...prev, ...newlyUnlockedAchievements]);
     }
     
     return newlyUnlockedAchievements;
-  }, [achievements, calculateProgress]);
+  }, [achievements, calculateProgress, shownAchievements]);
 
-  // Clear newly unlocked achievements
+  // Clear newly unlocked achievements and mark them as shown
   const clearNewlyUnlocked = useCallback(() => {
+    // Mark all currently newly unlocked achievements as shown
+    setShownAchievements(prev => {
+      const newSet = new Set(prev);
+      newlyUnlocked.forEach(achievement => {
+        newSet.add(achievement.id);
+      });
+      return newSet;
+    });
+    
     setNewlyUnlocked([]);
-  }, []);
+  }, [newlyUnlocked]);
 
   // Get achievement by ID
   const getAchievement = useCallback((id: string) => {
@@ -331,7 +365,9 @@ export const useAchievements = () => {
     setAchievements(ACHIEVEMENTS);
     setAchievementProgress([]);
     setNewlyUnlocked([]);
+    setShownAchievements(new Set());
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SHOWN_ACHIEVEMENTS_KEY);
   }, []);
 
   return {

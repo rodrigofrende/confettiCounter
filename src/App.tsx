@@ -64,21 +64,26 @@ function App() {
   const [showAchievementPopup, setShowAchievementPopup] = useState(false);
   const [currentAchievement, setCurrentAchievement] = useState<any>(null);
   const [achievementQueue, setAchievementQueue] = useState<any[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // ============================================================================
   // EFFECTS & DATA PERSISTENCE
   // ============================================================================
 
-  // Check for new achievements when data changes
+  // Check for new achievements when data changes (but not on initial load)
   useEffect(() => {
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+    
     if (transactions.length > 0 || goals.length > 0) {
       const newAchievements = checkNewAchievements(transactions, goals);
       if (newAchievements.length > 0) {
-        // Add all new achievements to the queue
         setAchievementQueue(prev => [...prev, ...newAchievements]);
       }
     }
-  }, [transactions, goals, checkNewAchievements]);
+  }, [transactions, goals, checkNewAchievements, isInitialLoad]);
 
   // Process achievement queue
   useEffect(() => {
@@ -319,6 +324,7 @@ function App() {
     setAchievementQueue([]);
     setShowAchievementPopup(false);
     setCurrentAchievement(null);
+    setIsInitialLoad(true);
     localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
     localStorage.removeItem(STORAGE_KEYS.GOALS);
     setShowResetModal(false);
